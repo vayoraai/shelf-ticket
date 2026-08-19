@@ -545,6 +545,20 @@ tbody tr.flash{animation:flashRow .9s;}
     <div class="modal-body">
       <p class="hint" style="margin-bottom:14px;">Everyone listed here can view, scan into, and edit this store's catalog and queue.</p>
       <div id="membersList"></div>
+      <div id="inviteSection" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Invite a teammate</label>
+        <div style="display:flex;gap:8px;">
+          <input type="email" id="inviteEmail" placeholder="their.email@store.com" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;">
+          <button class="btn primary" id="btnSendInvite">Invite</button>
+        </div>
+        <p class="hint" style="margin-top:6px;">They still need an account created for them first (Firebase console). Once they sign in with this email, they'll join this store automatically — no code needed.</p>
+        <div id="pendingInvites" style="margin-top:10px;"></div>
+      </div>
+      <div id="dangerZone" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Danger zone (admin only)</label>
+        <button class="btn danger" style="width:100%;justify-content:center;" id="btnDeleteStore">Delete this store permanently</button>
+        <p class="hint" style="margin-top:6px;">Deletes the entire catalog, print queue, and every saved batch for this store. This cannot be undone.</p>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" data-close="overlayMembers">Close</button></div>
   </div>
@@ -779,8 +793,28 @@ async function showStoreGate(){
   $('gateStore').style.display='flex';
   $('mainApp').style.display='none';
   $('authEmailShown').textContent = currentUser.email;
+  await autoJoinInvitedStores();
   await renderMyStores();
   await renderAdminStores();
+}
+
+async function autoJoinInvitedStores(){
+  try{
+    const myEmail = (currentUser.email||'').toLowerCase();
+    if(!myEmail) return;
+    const q = query(collection(db,'stores'), where('invitedEmails','array-contains', myEmail));
+    const snap = await getDocs(q);
+    for(const d of snap.docs){
+      const members = d.data().members || [];
+      if(members.includes(currentUser.uid)) continue;
+      await updateDoc(doc(db,'stores',d.id), {
+        members: arrayUnion(currentUser.uid),
+        invitedEmails: arrayRemove(myEmail),
+      });
+      await setDoc(doc(db,'stores',d.id,'memberInfo',currentUser.uid), { email: currentUser.email, joinedAt: Date.now() }, {merge:true});
+      toast(`You've been added to ${d.data().name}`);
+    }
+  }catch(e){ /* fails silently — worst case they just use "Join with code" instead */ }
 }
 
 async function renderMyStores(){
@@ -924,9 +958,13 @@ $('btnMembers').addEventListener('click', async ()=>{
   openModal('overlayMembers');
   const list = $('membersList');
   list.innerHTML = '<p class="hint">Loading…</p>';
+  const isOwnerOfThisStore = currentUser.uid === currentStoreOwnerUid;
+  $('inviteSection').style.display = (isAdminUser || isOwnerOfThisStore) ? 'block' : 'none';
+  $('dangerZone').style.display = isAdminUser ? 'block' : 'none';
   try{
     const snap = await getDoc(doc(db,'stores',storeCode));
     const members = snap.data().members || [];
+    const invitedEmails = snap.data().invitedEmails || [];
     const infoSnap = await getDocs(collection(db,'stores',storeCode,'memberInfo'));
     const info = {};
     infoSnap.forEach(d=> info[d.id] = d.data());
@@ -959,9 +997,74 @@ $('btnMembers').addEventListener('click', async ()=>{
       }
       list.appendChild(row);
     });
+
+    if(isAdminUser || isOwnerOfThisStore){
+      const pendingWrap = $('pendingInvites');
+      pendingWrap.innerHTML = '';
+      if(invitedEmails.length){
+        invitedEmails.forEach(email=>{
+          const row = document.createElement('div');
+          row.className = 'member-row';
+          row.innerHTML = `<div class="who"><b>${escapeHtml(email)}</b><span>Invited — not joined yet</span></div>`;
+          const btn = document.createElement('button');
+          btn.className = 'btn ghost'; btn.style.color = 'var(--red)'; btn.textContent = 'Cancel';
+          btn.addEventListener('click', async ()=>{
+            try{
+              await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayRemove(email) });
+              toast('Invite cancelled');
+              $('btnMembers').click();
+            }catch(e){ toast('Could not cancel: '+e.message, 'err'); }
+          });
+          row.appendChild(btn);
+          pendingWrap.appendChild(row);
+        });
+      }
+    }
   }catch(e){
     list.innerHTML = `<p class="hint">Couldn't load members: ${escapeHtml(e.message)}</p>`;
   }
+});
+
+$('btnSendInvite').addEventListener('click', async ()=>{
+  const email = $('inviteEmail').value.trim().toLowerCase();
+  if(!email || !email.includes('@')){ toast('Enter a valid email', 'err'); return; }
+  try{
+    await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayUnion(email) });
+    $('inviteEmail').value = '';
+    toast(`Invited ${email} — they'll join automatically once they sign in`);
+    $('btnMembers').click();
+  }catch(e){ toast('Could not send invite: '+e.message, 'err'); }
+});
+
+$('btnDeleteStore').addEventListener('click', async ()=>{
+  const name = $('activeStoreName').textContent;
+  const typed = prompt(`This permanently deletes "${name}" and everything in it — catalog, print queue, and every saved batch. This cannot be undone.\n\nType the store's name exactly to confirm:`);
+  if(typed !== name){ if(typed !== null) toast('Name did not match — nothing was deleted', 'err'); return; }
+  try{
+    const [productsSnap, queueSnap, batchesSnap, memberInfoSnap] = await Promise.all([
+      getDocs(collection(db,'stores',storeCode,'products')),
+      getDocs(collection(db,'stores',storeCode,'queue')),
+      getDocs(collection(db,'stores',storeCode,'batches')),
+      getDocs(collection(db,'stores',storeCode,'memberInfo')),
+    ]);
+    let batch = writeBatch(db); let ops = 0;
+    const flush = async ()=>{ if(ops>0){ await batch.commit(); batch = writeBatch(db); ops = 0; } };
+    for(const d of productsSnap.docs){ batch.delete(d.ref); ops++; if(ops>=400) await flush(); }
+    for(const d of queueSnap.docs){ batch.delete(d.ref); ops++; if(ops>=400) await flush(); }
+    for(const d of memberInfoSnap.docs){ batch.delete(d.ref); ops++; if(ops>=400) await flush(); }
+    for(const b of batchesSnap.docs){
+      const itemsSnap = await getDocs(collection(db,'stores',storeCode,'batches',b.id,'items'));
+      for(const it of itemsSnap.docs){ batch.delete(it.ref); ops++; if(ops>=400) await flush(); }
+      batch.delete(b.ref); ops++; if(ops>=400) await flush();
+    }
+    await flush();
+    await deleteDoc(doc(db,'stores',storeCode));
+    toast('Store deleted');
+    closeModal('overlayMembers');
+    leaveStoreListeners();
+    localStorage.removeItem('shelfticket-store-code');
+    showStoreGate();
+  }catch(e){ toast('Delete failed: '+e.message, 'err'); }
 });
 
 function leaveStoreListeners(){
