@@ -1,0 +1,17 @@
+{
+  "name": "Shelf Ticket Generator",
+  "short_name": "Tickets",
+  "description": "Price tags & barcode labels, synced across devices",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf7ef",
+  "theme_color": "#1f5c41",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

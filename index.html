@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Shelf Tickets">
+<meta name="theme-color" content="#1f5c41">
+<title>Shelf Ticket Generator</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+:root{
+  --green-900:#173d2e; --green-700:#1f5c41; --green-600:#2d7a52; --green-100:#e6f0e8;
+  --cream:#faf7ef; --paper:#ffffff; --ink:#20241f; --ink-soft:#5c6459; --line:#e0dccd;
+  --amber:#d97a1f; --amber-100:#fbe9d4; --red:#b3372c;
+  --shadow:0 1px 2px rgba(23,61,46,.06),0 4px 14px rgba(23,61,46,.08); --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--cream);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:'Space Grotesk',system-ui,sans-serif;margin:0;}
+button{font-family:inherit;} input,select,textarea{font-family:inherit;}
+
+.app{max-width:1180px;margin:0 auto;padding:20px 20px 80px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand .mark{width:38px;height:38px;border-radius:9px;background:var(--green-700);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-family:'Space Grotesk',sans-serif;font-size:18px;flex:none;}
+.brand h1{font-size:19px;color:var(--green-900);}
+.brand p{margin:0;font-size:12px;color:var(--ink-soft);}
+.sync-pill{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--green-700);background:var(--green-100);padding:5px 10px;border-radius:20px;}
+.sync-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green-600);animation:pulse 1.6s infinite;}
+.sync-pill.offline{color:var(--red);background:#fbe4e1;}
+.sync-pill.offline .dot{background:var(--red);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+.stats{display:flex;gap:10px;flex-wrap:wrap;}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-align:center;min-width:76px;}
+.stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:17px;color:var(--green-900);}
+.stat span{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+
+.storebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--green-900);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;}
+.storebar svg{width:16px;height:16px;color:#cfe8da;flex:none;}
+.storebar select{background:#1f5c41;color:#fff;border:1px solid #2d7a52;border-radius:7px;padding:7px 10px;font-size:13.5px;font-weight:600;max-width:200px;}
+.storebar .btn{background:transparent;border-color:#2d7a52;color:#e6f0e8;padding:6px 11px;font-size:12.5px;}
+.storebar .btn:hover{background:#1f5c41;border-color:#52b788;color:#fff;}
+.storebar .label{color:#cfe8da;font-size:12px;font-weight:600;margin-right:2px;}
+.storebar .code-pill{background:#0f2e21;color:#8fd6ab;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 10px;border-radius:7px;cursor:pointer;}
+.storebar .spacer{flex:1;}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:16px;box-shadow:var(--shadow);}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:9px 14px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
+.btn:hover{border-color:var(--green-600);color:var(--green-700);}
+.btn:active{transform:translateY(1px);}
+.btn.primary{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.btn.primary:hover{background:var(--green-900);border-color:var(--green-900);color:#fff;}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#fff;}
+.btn.amber:hover{background:#b3630f;border-color:#b3630f;}
+.btn.ghost{border-color:transparent;background:transparent;}
+.btn.danger{color:var(--red);}
+.btn.danger:hover{border-color:var(--red);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn svg{width:15px;height:15px;flex:none;}
+.spacer{flex:1;}
+.search{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--cream);min-width:170px;}
+.search input{border:none;background:none;outline:none;font-size:13.5px;width:100%;color:var(--ink);}
+.search svg{flex:none;width:15px;height:15px;color:var(--ink-soft);}
+
+.scanbar{display:none;align-items:center;gap:10px;background:var(--green-100);border:1px solid #bfe0cb;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;}
+.scanbar.active{display:flex;}
+.scanbar .dot2{width:9px;height:9px;border-radius:50%;background:var(--green-600);flex:none;animation:pulse 1.4s infinite;}
+.scanbar input{flex:1;border:1px solid #bfe0cb;border-radius:6px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;outline:none;background:#fff;}
+.scanbar .label{font-size:12.5px;color:var(--green-900);font-weight:600;white-space:nowrap;}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--green-900);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow);z-index:400;opacity:0;pointer-events:none;transition:opacity .25s, bottom .25s;max-width:88vw;text-align:center;}
+.toast.show{opacity:1;bottom:32px;}
+.toast.warn{background:var(--amber);}
+.toast.err{background:var(--red);}
+
+.tabs{display:flex;gap:6px;margin-bottom:10px;}
+.tab{padding:9px 16px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink-soft);}
+.tab .count{display:inline-block;background:#e7e2d2;color:var(--ink-soft);border-radius:20px;padding:1px 8px;font-size:11.5px;margin-left:6px;}
+.tab.active{background:var(--paper);border-color:var(--line);color:var(--green-800);box-shadow:var(--shadow);}
+.tab.active .count{background:var(--green-100);color:var(--green-800);}
+
+.table-wrap{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:820px;}
+thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:10px 12px;border-bottom:1px solid var(--line);background:#fbf9f3;position:sticky;top:0;}
+tbody td{padding:9px 12px;border-bottom:1px solid #f0ede1;vertical-align:middle;}
+tbody tr:hover{background:#fbf9f3;}
+tbody tr.flash{animation:flashRow .9s;}
+@keyframes flashRow{0%{background:var(--amber-100);}100%{background:transparent;}}
+.cell-name{font-weight:600;color:var(--ink);}
+.cell-name small{display:block;font-weight:400;color:var(--ink-soft);font-size:11.5px;}
+.cell-price{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--green-900);}
+.cell-mrp{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);text-decoration:line-through;font-size:12px;}
+.cell-barcode{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+.cell-barcode.dup{color:var(--red);}
+.dup-flag{display:inline-block;background:#fbe4e1;color:var(--red);font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.02em;padding:2px 7px;border-radius:20px;margin-left:4px;}
+.dup-banner{display:none;align-items:center;gap:8px;background:#fbe4e1;border:1px solid #f2b8b0;color:#8a291f;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;}
+.dup-banner svg{width:16px;height:16px;flex:none;}
+.loc-pill{display:inline-block;background:var(--green-100);color:var(--green-800);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-right:4px;}
+.status-pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-pill.printed{background:var(--green-100);color:var(--green-800);}
+.status-pill.notprinted{background:#e7e2d2;color:var(--ink-soft);}
+.qty-input,.copies-input{width:52px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:5px 4px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+.bay-edit-input{width:120px;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:12.5px;}
+.icon-btn{border:none;background:none;cursor:pointer;color:var(--ink-soft);padding:5px;border-radius:6px;}
+.icon-btn:hover{background:var(--green-100);color:var(--green-800);}
+.icon-btn.del:hover{background:#fbe4e1;color:var(--red);}
+.icon-btn.add{color:var(--green-700);}
+.empty{padding:60px 20px;text-align:center;color:var(--ink-soft);}
+.empty h3{color:var(--ink);margin-bottom:6px;font-size:16px;}
+.empty p{margin:0 0 16px;font-size:13.5px;}
+
+.overlay{position:fixed;inset:0;background:rgba(23,30,25,.5);display:none;align-items:center;justify-content:center;z-index:300;padding:16px;}
+.overlay.show{display:flex;}
+.modal{background:var(--paper);border-radius:14px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal.wide{max-width:760px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);}
+.modal-head h2{font-size:16px;color:var(--green-900);}
+.modal-body{padding:20px;}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:14px;outline:none;}
+.field textarea{font-family:'IBM Plex Mono',monospace;font-size:12px;min-height:110px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green-600);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+.map-table{width:100%;border-collapse:collapse;margin-bottom:6px;}
+.map-table td{padding:7px 4px;font-size:13px;vertical-align:middle;}
+.map-table td:first-child{font-weight:600;width:130px;}
+.req{color:var(--red);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f0ede1;}
+.toggle-row:last-child{border-bottom:none;}
+.toggle-row span{font-size:13.5px;}
+.switch{position:relative;width:38px;height:22px;flex:none;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:#d8d4c5;border-radius:22px;cursor:pointer;transition:.2s;}
+.slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:var(--green-600);}
+.switch input:checked + .slider:before{transform:translateX(16px);}
+
+#cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;min-height:280px;}
+#cameraWrap video, #cameraWrap canvas{width:100%!important;height:auto!important;display:block;}
+.scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:78%;height:34%;border:2px solid var(--amber);border-radius:8px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
+.cam-status{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:10px;}
+.note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+
+#printArea{display:none;}
+.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto 24px;padding:10mm;box-shadow:var(--shadow);}
+.ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),1fr);grid-template-rows:repeat(var(--rows,8),1fr);gap:2.5mm;}
+.ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;}
+.t-top .t-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;line-height:1.15;color:#1a1a1a;}
+.t-top .t-meta{display:flex;gap:6px;margin-top:1.4mm;flex-wrap:wrap;}
+.t-cat{font-size:7.6px;text-transform:uppercase;letter-spacing:.03em;color:#6a6a6a;background:#f1f1f1;padding:1px 5px;border-radius:3px;}
+.t-bay{font-size:7.6px;text-transform:uppercase;letter-spacing:.03em;color:#8a4d10;background:#fbe9d4;padding:1px 5px;border-radius:3px;}
+.t-qty{font-size:8.3px;color:#555;font-weight:600;}
+.t-mid{display:flex;align-items:flex-end;justify-content:space-between;margin:1.4mm 0;}
+.t-price{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:19px;color:var(--green-900);line-height:1;}
+.t-mrp{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a8a8a;text-decoration:line-through;margin-left:5px;}
+.t-exp{font-size:7.4px;color:var(--red);font-weight:600;}
+.t-bottom{display:flex;flex-direction:column;align-items:center;}
+.t-bottom svg{width:100%;height:auto;max-height:11mm;}
+
+/* Promo tickets (A5 / A4) */
+.ticket-grid.type-promoA5{gap:4mm;}
+.ticket-grid.type-promoA4{gap:0;}
+.type-promoA5 .ticket, .type-promoA4 .ticket{
+  border-style:solid;border-width:1.4px;border-color:#d8d2c4;border-radius:4mm;
+  padding:10mm 12mm;position:relative;background:linear-gradient(180deg,#fff,#fbf9f3);
+}
+.type-promoA5 .t-name{font-size:24px;line-height:1.2;}
+.type-promoA4 .t-name{font-size:40px;line-height:1.2;}
+.type-promoA5 .t-cat,.type-promoA5 .t-bay{font-size:11px;padding:3px 9px;}
+.type-promoA4 .t-cat,.type-promoA4 .t-bay{font-size:15px;padding:5px 14px;}
+.type-promoA5 .t-qty{font-size:13px;}
+.type-promoA4 .t-qty{font-size:19px;}
+.type-promoA5 .t-price{font-size:48px;}
+.type-promoA4 .t-price{font-size:92px;}
+.type-promoA5 .t-mrp{font-size:17px;margin-left:10px;}
+.type-promoA4 .t-mrp{font-size:30px;margin-left:16px;}
+.type-promoA5 .t-exp{font-size:11px;}
+.type-promoA4 .t-exp{font-size:15px;}
+.type-promoA5 .t-bottom svg{max-height:20mm;}
+.type-promoA4 .t-bottom svg{max-height:30mm;}
+.t-discount{
+  position:absolute;top:8mm;right:8mm;background:var(--red);color:#fff;font-weight:800;
+  font-size:14px;padding:5px 13px;border-radius:30px;transform:rotate(6deg);
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+.type-promoA4 .t-discount{font-size:24px;padding:9px 20px;top:12mm;right:12mm;}
+.t-promo-label{
+  position:absolute;top:8mm;left:8mm;background:var(--green-900);color:#fff;font-weight:700;
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:20px;
+}
+.type-promoA4 .t-promo-label{font-size:16px;padding:8px 18px;top:12mm;left:12mm;}
+.t-sale-dates{font-size:9px;color:#8a8474;font-weight:600;margin-top:.6mm;}
+.type-promoA5 .t-sale-dates{font-size:11.5px;}
+.type-promoA4 .t-sale-dates{font-size:15px;}
+
+/* Promo A7 — 8 per A4 (2 cols x 4 rows), landscape cells */
+.ticket-grid.type-promoA7{gap:2.5mm;}
+.type-promoA7 .ticket{
+  border-style:solid;border-width:1.2px;border-color:#d8d2c4;border-radius:2.5mm;
+  padding:4mm 5mm;position:relative;background:linear-gradient(180deg,#fff,#fbf9f3);
+}
+.type-promoA7 .t-name{font-size:14.5px;line-height:1.15;}
+.type-promoA7 .t-cat,.type-promoA7 .t-bay{font-size:8px;padding:2px 6px;}
+.type-promoA7 .t-qty{font-size:9px;}
+.type-promoA7 .t-price{font-size:25px;}
+.type-promoA7 .t-mrp{font-size:11.5px;margin-left:6px;}
+.type-promoA7 .t-exp{font-size:7.6px;}
+.type-promoA7 .t-sale-dates{font-size:7.6px;}
+.type-promoA7 .t-bottom svg{max-height:9mm;}
+.type-promoA7 .t-discount{font-size:10.5px;padding:3px 8px;top:3mm;right:3mm;}
+.type-promoA7 .t-promo-label{font-size:8px;padding:3px 7px;top:3mm;left:3mm;}
+
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{display:block;position:absolute;top:0;left:0;margin:0;}
+  .page{box-shadow:none;margin:0;page-break-after:always;}
+  .page:last-child{page-break-after:auto;}
+  @page{size:A4;margin:0;}
+}
+@media (max-width:720px){ .row2,.row3{grid-template-columns:1fr;} .brand p{display:none;} }
+
+/* ---------- Gate screens (setup / auth / store) ---------- */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.gate-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);max-width:420px;width:100%;padding:30px 28px;}
+.gate-card h2{font-size:19px;color:var(--green-900);margin-bottom:6px;}
+.gate-card p.sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 20px;line-height:1.5;}
+.gate-tabs{display:flex;gap:4px;margin-bottom:18px;background:var(--cream);padding:4px;border-radius:9px;}
+.gate-tab{flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+.gate-tab.active{background:var(--paper);color:var(--green-800);box-shadow:var(--shadow);}
+.gate-err{background:#fbe4e1;color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
+.gate-err.show{display:block;}
+.or-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;}
+.or-divider:before,.or-divider:after{content:"";flex:1;height:1px;background:var(--line);}
+.my-store-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px;cursor:pointer;transition:.15s;}
+.my-store-row:hover{border-color:var(--green-600);background:var(--green-100);}
+.my-store-row b{font-size:13.5px;color:var(--ink);}
+.my-store-row span{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);}
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid #f0ede1;}
+.member-row:last-child{border-bottom:none;}
+.member-row .who b{font-size:13.5px;display:block;}
+.member-row .who span{font-size:11.5px;color:var(--ink-soft);}
+.member-row .you-badge{background:var(--green-100);color:var(--green-800);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.member-row .owner-badge{background:var(--amber-100);color:#8a4d10;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+</style>
+</head>
+<body>
+
+<!-- ============ GATE: Firebase config setup ============ -->
+<div class="gate" id="gateConfig">
+  <div class="gate-card">
+    <h2>One-time cloud setup</h2>
+    <p class="sub">This device needs your Firebase project details, once. If you've already set this up on another device, paste the same config here so every device points at the same cloud project.</p>
+    <div class="gate-err" id="configErr"></div>
+    <div class="field"><label>Firebase config (paste the object from your Firebase console)</label>
+      <textarea id="configInput" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea>
+    </div>
+    <button class="btn primary" style="width:100%;justify-content:center;" id="btnSaveConfig">Save &amp; continue</button>
+    <p class="note">Don't have this yet? See the setup guide that came with this file — it's a 5-minute, free, one-time step in the Firebase console.</p>
+  </div>
+</div>
+
+<!-- ============ GATE: Auth ============ -->
+<div class="gate" id="gateAuth" style="display:none;">
+  <div class="gate-card">
+    <h2>Sign in</h2>
+    <p class="sub">Sign in to sync your store's tickets across every device. Access is by invitation — contact your store admin if you don't have an account yet.</p>
+    <div class="gate-err" id="authErr"></div>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@store.com"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="At least 6 characters"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;" id="btnAuthSubmit">Sign in</button>
+    <p style="text-align:center;margin:12px 0 0;">
+      <a href="#" id="btnForgotPassword" style="font-size:12.5px;color:var(--green-700);font-weight:600;text-decoration:none;">Forgot your password?</a>
+    </p>
+    <div class="or-divider">or</div>
+    <button class="btn ghost" style="width:100%;justify-content:center;" id="btnChangeConfig">Use a different Firebase project</button>
+  </div>
+</div>
+
+<!-- ============ GATE: Store select ============ -->
+<div class="gate" id="gateStore" style="display:none;">
+  <div class="gate-card">
+    <h2>Choose a store</h2>
+    <p class="sub">You'll only ever see stores you've personally joined — no store can see another's data.</p>
+    <div id="adminStoresWrap" style="display:none;margin-bottom:18px;">
+      <label style="display:block;font-size:12px;font-weight:700;color:#b3630f;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
+      <div id="adminStoresList"></div>
+    </div>
+    <div id="myStoresWrap" style="display:none;margin-bottom:18px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Your stores</label>
+      <div id="myStoresList"></div>
+    </div>
+    <div class="gate-tabs">
+      <div class="gate-tab active" id="storeTabCreate">Create store</div>
+      <div class="gate-tab" id="storeTabJoin">Join with code</div>
+    </div>
+    <div class="gate-err" id="storeErr"></div>
+    <div id="storeCreatePane">
+      <div class="field"><label>Store name</label><input id="newStoreName" placeholder="e.g. Green Valley Grocers"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;" id="btnCreateStore">Create store</button>
+    </div>
+    <div id="storeJoinPane" style="display:none;">
+      <div class="field"><label>Store code</label><input id="joinStoreCode" placeholder="e.g. 7XQ2KD" style="text-transform:uppercase;"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;" id="btnJoinStore">Join store</button>
+    </div>
+    <div class="or-divider">signed in as <span id="authEmailShown"></span></div>
+    <button class="btn ghost" style="width:100%;justify-content:center;" id="btnCopyUid">Copy my account ID (for admin setup)</button>
+    <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;" id="btnSignOutFromStore">Sign out</button>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="app" id="mainApp" style="display:none;">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">₹</div>
+      <div><h1>Shelf Ticket Generator</h1><p>Price tags &amp; barcode labels, synced across devices</p></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="sync-pill" id="syncPill"><span class="dot"></span><span id="syncPillText">Synced</span></div>
+      <div class="stats">
+        <div class="stat"><b id="statTotal">0</b><span>Catalog</span></div>
+        <div class="stat"><b id="statQueue">0</b><span>Queued</span></div>
+        <div class="stat"><b id="statTickets">0</b><span>Tickets</span></div>
+        <div class="stat"><b id="statPages">0</b><span>Pages</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="storebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l2-6h14l2 6M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18M9 21v-6h6v6"/></svg>
+    <span class="label">Store:</span>
+    <b id="activeStoreName" style="color:#fff;font-size:13.5px;"></b>
+    <span class="code-pill" id="storeCodePill" title="Click to copy invite code">Code: —</span>
+    <span id="adminViewBadge" style="display:none;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:20px;">ADMIN VIEW</span>
+    <div class="spacer"></div>
+    <button class="btn" id="btnMembers">Staff / members</button>
+    <button class="btn" id="btnSwitchStore">Switch / join store</button>
+    <button class="btn danger-out" id="btnLeaveStore">Leave store</button>
+    <button class="btn" id="btnSignOut">Sign out</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn primary" id="btnImport">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      Import Excel / CSV
+    </button>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none">
+    <button class="btn" id="btnAdd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Add product
+    </button>
+    <button class="btn" id="btnScanToggle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10"/></svg>
+      USB / BT scanner
+    </button>
+    <button class="btn" id="btnCamera">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Scan with phone
+    </button>
+    <button class="btn" id="btnSettings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Fields
+    </button>
+    <div class="search" style="min-width:190px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <input type="text" id="bayInput" placeholder="Current bay / aisle (optional)">
+    </div>
+    <div class="search" style="min-width:170px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L11 3.83V3H3v8h.83l9.58 9.59a2 2 0 002.83 0l4.35-4.35a2 2 0 000-2.83z"/><circle cx="6.5" cy="6.5" r="1.5"/></svg>
+      <select id="ticketTypeInput" style="border:none;background:none;outline:none;font-size:13.5px;width:100%;color:var(--ink);">
+        <option value="shelf">Shelf tag</option>
+        <option value="a7">Promo — A7 (8/page)</option>
+        <option value="a5">Promo — A5 (2/page)</option>
+        <option value="a4">Promo — A4 (1/page)</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="searchBox" placeholder="Search name or barcode…">
+    </div>
+    <button class="btn amber" id="btnPreview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="1"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
+      Preview &amp; Print
+    </button>
+  </div>
+
+  <div class="scanbar" id="scanBar">
+    <div class="dot2"></div>
+    <div class="label">Scanner ready — click here, then scan (syncs to every device)</div>
+    <input type="text" id="scanInput" placeholder="Scan barcode…" autocomplete="off">
+    <button class="btn ghost" id="btnScanClose">Close</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabCatalog">Catalog <span class="count" id="tabCatalogCount">0</span></button>
+    <button class="tab" id="tabQueue">Print Queue <span class="count" id="tabQueueCount">0</span></button>
+    <button class="tab" id="tabBatches">Batches <span class="count" id="tabBatchesCount">0</span></button>
+  </div>
+
+  <div id="catalogView">
+    <div class="dup-banner" id="dupWarningBanner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="dupWarningText"></span>
+    </div>
+    <div class="table-wrap">
+      <table id="productTable">
+        <thead><tr>
+          <th>Product</th><th>Barcode</th><th>Price</th><th id="thMrp">MRP</th>
+          <th>Qty / Pack</th><th id="thUnit">Unit</th><th id="thCat">Category</th>
+          <th style="width:110px;">Add to queue</th><th style="width:70px;"></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyState">
+        <h3>No products yet</h3>
+        <p>Import a spreadsheet, or add your first product manually — it'll sync to every device on this store instantly.</p>
+        <button class="btn primary" id="btnAdd2">Add product</button>
+      </div>
+    </div>
+    <p class="note">Tip: scan on your phone (camera or a paired scanner) and the item lands in the Print Queue on your laptop within seconds — no refresh needed. Set "Current bay / aisle" before scanning to tag where items are headed.</p>
+  </div>
+
+  <div id="queueView" style="display:none;">
+    <div class="table-wrap">
+      <table id="queueTable">
+        <thead><tr><th>Product</th><th>Bay / Aisle</th><th>Ticket type</th><th style="min-width:190px;">Promo details</th><th>Barcode</th><th>Price</th><th style="width:80px;">Copies</th><th style="width:50px;"></th></tr></thead>
+        <tbody id="queueBody"></tbody>
+      </table>
+      <div class="empty" id="queueEmpty">
+        <h3>Print queue is empty</h3>
+        <p>Scan items or use "Add to queue" from the Catalog tab.</p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button class="btn danger" id="btnClearQueue">Clear queue</button>
+      <button class="btn primary" id="btnSaveBatch">Save as batch</button>
+    </div>
+  </div>
+
+  <div id="batchesView" style="display:none;">
+    <div class="table-wrap">
+      <table id="batchesTable">
+        <thead><tr><th>Batch</th><th>Location</th><th>Tickets</th><th>Created</th><th>Status</th><th style="width:190px;"></th></tr></thead>
+        <tbody id="batchesBody"></tbody>
+      </table>
+      <div class="empty" id="batchesEmpty">
+        <h3>No saved batches yet</h3>
+        <p>Build a Print Queue, then click "Save as batch" to archive it here — tagged by aisle/bay/zone, kept for reprinting anytime, and marked once it's actually been printed.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ Add / Edit product modal ============ -->
+<div class="overlay" id="overlayForm">
+  <div class="modal">
+    <div class="modal-head"><h2 id="formTitle">Add product</h2><button class="icon-btn" data-close="overlayForm">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="fId">
+      <div class="field"><label>Product name <span class="req">*</span></label><input id="fName" placeholder="e.g. Basmati Rice"></div>
+      <div class="row2">
+        <div class="field"><label>Barcode <span class="req">*</span></label><input id="fBarcode" placeholder="e.g. 8901234567890"></div>
+        <div class="field"><label>Price <span class="req">*</span></label><input id="fPrice" type="number" step="0.01" placeholder="e.g. 149.00"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>MRP (optional)</label><input id="fMrp" type="number" step="0.01" placeholder="e.g. 179.00"></div>
+        <div class="field"><label>Qty / pack size</label><input id="fQty" placeholder="e.g. 1kg, 500ml, 6pcs"></div>
+        <div class="field"><label>Unit</label><input id="fUnit" placeholder="e.g. kg, pcs, L"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Category</label><input id="fCategory" placeholder="e.g. Grains"></div>
+        <div class="field"><label>Best before / expiry</label><input id="fExpiry" placeholder="e.g. 12/2026"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="overlayForm">Cancel</button>
+      <button class="btn primary" id="btnSaveProduct">Save product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Import mapping modal ============ -->
+<div class="overlay" id="overlayImport">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Match your columns</h2><button class="icon-btn" data-close="overlayImport">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">We found <b id="importRowCount">0</b> rows for <b id="importStoreName"></b>. Tell us which column in your file is which.</p>
+      <table class="map-table" id="mapTable"></table>
+      <div class="hint">Rows missing a name, barcode, or price will be skipped. Matching barcodes update the existing product instead of duplicating.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="overlayImport">Cancel</button>
+      <button class="btn primary" id="btnConfirmImport">Import products</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Save batch modal ============ -->
+<div class="overlay" id="overlaySaveBatch">
+  <div class="modal">
+    <div class="modal-head"><h2>Save as batch</h2><button class="icon-btn" data-close="overlaySaveBatch">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">Archives everything currently in your Print Queue as a named batch you can reprint anytime.</p>
+      <div class="field"><label>Batch name (optional)</label><input id="batchName" placeholder="e.g. Weekly reprint, Grand opening"></div>
+      <div class="row3">
+        <div class="field"><label>Aisle no.</label><input id="batchAisle" placeholder="e.g. 4"></div>
+        <div class="field"><label>Bay no.</label><input id="batchBay" placeholder="e.g. 12"></div>
+        <div class="field"><label>Zone no.</label><input id="batchZone" placeholder="e.g. B"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Clear the working queue after saving</span>
+        <label class="switch"><input type="checkbox" id="batchClearAfter" checked><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="overlaySaveBatch">Cancel</button>
+      <button class="btn primary" id="btnConfirmSaveBatch">Save batch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Members modal ============ -->
+<div class="overlay" id="overlayMembers">
+  <div class="modal">
+    <div class="modal-head"><h2>Staff / members</h2><button class="icon-btn" data-close="overlayMembers">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">Everyone listed here can view, scan into, and edit this store's catalog and queue.</p>
+      <div id="membersList"></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" data-close="overlayMembers">Close</button></div>
+  </div>
+</div>
+
+<!-- ============ Camera scan modal ============ -->
+<div class="overlay" id="overlayCamera">
+  <div class="modal">
+    <div class="modal-head"><h2>Scan with phone camera</h2><button class="icon-btn" id="btnCloseCamera">✕</button></div>
+    <div class="modal-body">
+      <div id="cameraWrap"><div class="scan-frame"></div></div>
+      <div class="cam-status" id="camStatus">Point your camera at a barcode…</div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" id="btnCloseCamera2">Done</button></div>
+  </div>
+</div>
+
+
+<!-- ============ Settings modal ============ -->
+<div class="overlay" id="overlaySettings">
+  <div class="modal">
+    <div class="modal-head"><h2>Ticket fields &amp; layout</h2><button class="icon-btn" data-close="overlaySettings">✕</button></div>
+    <div class="modal-body">
+      <div class="toggle-row"><span>Show MRP (with price struck through)</span><label class="switch"><input type="checkbox" id="optMrp" checked><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Show unit (kg / pcs / L…)</span><label class="switch"><input type="checkbox" id="optUnit"><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Show category</span><label class="switch"><input type="checkbox" id="optCategory"><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Show bay / aisle tag</span><label class="switch"><input type="checkbox" id="optBay" checked><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Show best before / expiry</span><label class="switch"><input type="checkbox" id="optExpiry"><span class="slider"></span></label></div>
+      <div class="toggle-row"><span>Beep on scan (success + not-found sounds)</span><label class="switch"><input type="checkbox" id="optBeep" checked><span class="slider"></span></label></div>
+      <div class="row2" style="margin-top:16px;">
+        <div class="field"><label>Currency symbol</label><input id="optCurrency" value="₹"></div>
+        <div class="field"><label>Shelf tag layout (cols × rows per A4)</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="optCols" type="number" min="1" max="6" value="3" style="width:70px;"><span>×</span>
+            <input id="optRows" type="number" min="1" max="12" value="8" style="width:70px;">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn primary" id="btnSaveSettings">Save settings</button></div>
+  </div>
+</div>
+
+<!-- ============ Print preview ============ -->
+<div class="overlay" id="overlayPreview">
+  <div class="modal wide" style="max-width:900px;">
+    <div class="modal-head"><h2>Preview — <span id="previewCount">0</span> tickets, <span id="previewPages">0</span> page(s)</h2><button class="icon-btn" data-close="overlayPreview">✕</button></div>
+    <div class="modal-body" style="background:#ece7d9;"><div id="previewInner"></div></div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close="overlayPreview">Back</button>
+      <button class="btn primary" id="btnDoPrint">Print now</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  sendPasswordResetEmail, createUserWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
+  getDoc, getDocs, onSnapshot, writeBatch, enableIndexedDbPersistence,
+  query, where, arrayUnion, arrayRemove
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const $ = (id) => document.getElementById(id);
+const uid6 = () => Array.from({length:6}, ()=> "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*33)]).join('');
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ===================== Toast ===================== */
+let toastTimer;
+function toast(msg, kind){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (kind ? ' '+kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className='toast'; }, 2600);
+}
+function openModal(id){ $(id).classList.add('show'); }
+function closeModal(id){ $(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('click', ()=> closeModal(el.dataset.close)));
+window.closeModal = closeModal;
+
+/* ===================== Firebase bootstrap ===================== */
+let app, auth, db;
+let currentUser = null;
+let isAdminUser = false;
+let storeCode = null;
+let currentStoreOwnerUid = null;
+let currentStoreMemberCount = 1;
+let unsubProducts = null, unsubQueue = null, unsubBatches = null;
+
+let products = [];
+let queue = [];
+let batches = [];
+let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:false, currency:'₹', cols:3, rows:8, beepOnScan:true };
+let pendingImportRows = [];
+let importHeaders = [];
+
+function setSyncPill(state){
+  const pill = $('syncPill');
+  if(state==='synced'){ pill.className='sync-pill'; $('syncPillText').textContent='Synced'; }
+  else if(state==='syncing'){ pill.className='sync-pill'; $('syncPillText').textContent='Syncing…'; }
+  else { pill.className='sync-pill offline'; $('syncPillText').textContent='Offline'; }
+}
+window.addEventListener('online', ()=> setSyncPill('synced'));
+window.addEventListener('offline', ()=> setSyncPill('offline'));
+
+function initFirebase(config){
+  app = initializeApp(config);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  try{ enableIndexedDbPersistence(db); }catch(e){ /* multiple tabs open, fine */ }
+  onAuthStateChanged(auth, async user=>{
+    currentUser = user;
+    if(user){
+      isAdminUser = false;
+      try{
+        const adminSnap = await getDoc(doc(db,'admins',user.uid));
+        isAdminUser = adminSnap.exists();
+      }catch(e){ isAdminUser = false; }
+      $('gateAuth').style.display='none';
+      const savedCode = localStorage.getItem('shelfticket-store-code');
+      if(savedCode){ enterStore(savedCode); }
+      else { showStoreGate(); }
+    } else {
+      $('gateAuth').style.display='flex';
+      $('gateStore').style.display='none';
+      $('mainApp').style.display='none';
+    }
+  });
+}
+
+/* ===================== GATE 1: Firebase config ===================== */
+// Baked in once your project is finalized, so new devices/browsers skip
+// straight to sign-in instead of needing the config pasted in every time.
+// "Use a different Firebase project" below still lets you override this.
+const DEFAULT_FIREBASE_CONFIG = {
+  "apiKey": "AIzaSyDsi0LarrlAmsizSQ4NN6iga2s0xGKAyJE",
+  "authDomain": "shelf-ticket.firebaseapp.com",
+  "projectId": "shelf-ticket",
+  "storageBucket": "shelf-ticket.firebasestorage.app",
+  "messagingSenderId": "936552539299",
+  "appId": "1:936552539299:web:f58f641c05b134bcea0b16"
+};
+
+const savedConfig = localStorage.getItem('shelfticket-firebase-config');
+const skipDefault = localStorage.getItem('shelfticket-skip-default');
+if(skipDefault) localStorage.removeItem('shelfticket-skip-default');
+if(savedConfig){
+  try{
+    const cfg = JSON.parse(savedConfig);
+    $('gateConfig').style.display='none';
+    initFirebase(cfg);
+  }catch(e){ localStorage.removeItem('shelfticket-firebase-config'); }
+} else if(!skipDefault && DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey){
+  $('gateConfig').style.display='none';
+  initFirebase(DEFAULT_FIREBASE_CONFIG);
+}
+
+$('btnSaveConfig').addEventListener('click', ()=>{
+  const raw = $('configInput').value.trim();
+  $('configErr').className='gate-err';
+  try{
+    const cfg = JSON.parse(raw);
+    if(!cfg.apiKey || !cfg.projectId){ throw new Error('Missing apiKey or projectId'); }
+    localStorage.setItem('shelfticket-firebase-config', JSON.stringify(cfg));
+    $('gateConfig').style.display='none';
+    $('gateAuth').style.display='flex';
+    initFirebase(cfg);
+  }catch(e){
+    $('configErr').textContent = "That doesn't look like a valid Firebase config — paste the full object from Project settings > Your apps.";
+    $('configErr').classList.add('show');
+  }
+});
+
+/* ===================== GATE 2: Auth ===================== */
+// Public self-sign-up is intentionally off — accounts are created by an
+// admin (Firebase console → Authentication → Add user) and shared with
+// whoever should have access. createUserWithEmailAndPassword stays
+// imported/available in case an in-app "invite teammate" admin tool gets
+// built later, but nothing in this UI calls it today.
+$('btnAuthSubmit').addEventListener('click', async ()=>{
+  const email = $('authEmail').value.trim();
+  const pw = $('authPassword').value;
+  $('authErr').className='gate-err';
+  if(!email || pw.length<6){ $('authErr').textContent='Enter a valid email and a password of 6+ characters.'; $('authErr').classList.add('show'); return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pw);
+  }catch(e){
+    $('authErr').textContent = friendlyAuthError(e);
+    $('authErr').classList.add('show');
+  }
+});
+$('btnForgotPassword').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  const email = $('authEmail').value.trim();
+  $('authErr').className='gate-err';
+  if(!email){ $('authErr').textContent='Type your email above first, then click "Forgot your password?" again.'; $('authErr').classList.add('show'); return; }
+  try{
+    await sendPasswordResetEmail(auth, email);
+    toast(`Password reset email sent to ${email}`);
+  }catch(e){
+    $('authErr').textContent = friendlyAuthError(e);
+    $('authErr').classList.add('show');
+  }
+});
+function friendlyAuthError(e){
+  const c = e.code||'';
+  if(c.includes('email-already-in-use')) return 'That email already has an account — try signing in instead.';
+  if(c.includes('wrong-password') || c.includes('invalid-credential')) return 'Incorrect email or password.';
+  if(c.includes('user-not-found')) return "No account with that email — check with your store admin, or you're on the wrong Firebase project.";
+  if(c.includes('weak-password')) return 'Password should be at least 6 characters.';
+  if(c.includes('invalid-email')) return 'That email address looks invalid.';
+  if(c.includes('too-many-requests')) return 'Too many attempts — please wait a bit and try again.';
+  return e.message || 'Something went wrong — please try again.';
+}
+$('btnChangeConfig').addEventListener('click', ()=>{
+  localStorage.removeItem('shelfticket-firebase-config');
+  localStorage.setItem('shelfticket-skip-default','1');
+  location.reload();
+});
+
+/* ===================== GATE 3: Store select ===================== */
+async function showStoreGate(){
+  $('gateAuth').style.display='none';
+  $('gateStore').style.display='flex';
+  $('mainApp').style.display='none';
+  $('authEmailShown').textContent = currentUser.email;
+  await renderMyStores();
+  await renderAdminStores();
+}
+
+async function renderMyStores(){
+  const wrap = $('myStoresWrap');
+  const list = $('myStoresList');
+  list.innerHTML = '';
+  try{
+    const q = query(collection(db,'stores'), where('members','array-contains', currentUser.uid));
+    const snap = await getDocs(q);
+    if(snap.empty){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    snap.forEach(d=>{
+      const row = document.createElement('div');
+      row.className = 'my-store-row';
+      row.innerHTML = `<b>${escapeHtml(d.data().name)}</b><span>${d.id}</span>`;
+      row.addEventListener('click', ()=> enterStore(d.id));
+      list.appendChild(row);
+    });
+  }catch(e){
+    wrap.style.display='none';
+  }
+}
+
+async function renderAdminStores(){
+  const wrap = $('adminStoresWrap');
+  if(!isAdminUser){ wrap.style.display='none'; return; }
+  const list = $('adminStoresList');
+  list.innerHTML = '';
+  try{
+    const snap = await getDocs(collection(db,'stores'));
+    if(snap.empty){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    snap.forEach(d=>{
+      const data = d.data();
+      const row = document.createElement('div');
+      row.className = 'my-store-row';
+      row.innerHTML = `<b>${escapeHtml(data.name)}</b><span>${d.id} · ${(data.members||[]).length} member(s)</span>`;
+      row.addEventListener('click', ()=> enterStore(d.id));
+      list.appendChild(row);
+    });
+  }catch(e){
+    wrap.style.display='none';
+  }
+}
+$('btnCopyUid').addEventListener('click', ()=>{
+  navigator.clipboard?.writeText(currentUser.uid);
+  toast('Account ID copied — paste it as the admins/<id> document in Firestore');
+});
+$('storeTabCreate').addEventListener('click', ()=>{
+  $('storeTabCreate').classList.add('active'); $('storeTabJoin').classList.remove('active');
+  $('storeCreatePane').style.display=''; $('storeJoinPane').style.display='none';
+});
+$('storeTabJoin').addEventListener('click', ()=>{
+  $('storeTabJoin').classList.add('active'); $('storeTabCreate').classList.remove('active');
+  $('storeJoinPane').style.display=''; $('storeCreatePane').style.display='none';
+});
+$('btnCreateStore').addEventListener('click', async ()=>{
+  const name = $('newStoreName').value.trim();
+  $('storeErr').className='gate-err';
+  if(!name){ $('storeErr').textContent='Enter a store name.'; $('storeErr').classList.add('show'); return; }
+  const code = uid6();
+  try{
+    await setDoc(doc(db,'stores',code), { name, ownerUid: currentUser.uid, members:[currentUser.uid], createdAt: Date.now() });
+    await setDoc(doc(db,'stores',code,'memberInfo',currentUser.uid), { email: currentUser.email, joinedAt: Date.now() });
+    enterStore(code);
+  }catch(e){
+    $('storeErr').textContent = e.message; $('storeErr').classList.add('show');
+  }
+});
+$('btnJoinStore').addEventListener('click', async ()=>{
+  const code = $('joinStoreCode').value.trim().toUpperCase();
+  $('storeErr').className='gate-err';
+  if(!code){ $('storeErr').textContent='Enter a store code.'; $('storeErr').classList.add('show'); return; }
+  try{
+    const snap = await getDoc(doc(db,'stores',code));
+    if(!snap.exists()){ $('storeErr').textContent='No store found with that code.'; $('storeErr').classList.add('show'); return; }
+    const members = snap.data().members || [];
+    if(!members.includes(currentUser.uid)){
+      await updateDoc(doc(db,'stores',code), { members: arrayUnion(currentUser.uid) });
+    }
+    await setDoc(doc(db,'stores',code,'memberInfo',currentUser.uid), { email: currentUser.email, joinedAt: Date.now() }, {merge:true});
+    enterStore(code);
+  }catch(e){
+    $('storeErr').textContent = "Couldn't join that store: "+e.message; $('storeErr').classList.add('show');
+  }
+});
+$('btnSignOutFromStore').addEventListener('click', ()=> signOut(auth));
+$('btnSignOut').addEventListener('click', ()=>{
+  leaveStoreListeners();
+  localStorage.removeItem('shelfticket-store-code');
+  signOut(auth);
+});
+$('btnSwitchStore').addEventListener('click', ()=>{
+  leaveStoreListeners();
+  localStorage.removeItem('shelfticket-store-code');
+  showStoreGate();
+});
+
+async function enterStore(code){
+  const snap = await getDoc(doc(db,'stores',code));
+  if(!snap.exists()){ localStorage.removeItem('shelfticket-store-code'); showStoreGate(); toast('Store code no longer valid','err'); return; }
+  storeCode = code;
+  const isMember = (snap.data().members||[]).includes(currentUser.uid);
+  currentStoreOwnerUid = snap.data().ownerUid || null;
+  currentStoreMemberCount = (snap.data().members||[]).length;
+  // Don't "remember" this store for next launch unless you're an actual member —
+  // an admin browsing in shouldn't get auto-dropped into someone else's store later.
+  if(isMember) localStorage.setItem('shelfticket-store-code', code);
+  else localStorage.removeItem('shelfticket-store-code');
+  $('activeStoreName').textContent = snap.data().name;
+  $('storeCodePill').textContent = 'Code: '+code;
+  $('adminViewBadge').style.display = (isAdminUser && !isMember) ? 'inline-block' : 'none';
+  $('btnLeaveStore').style.display = isMember ? '' : 'none';
+  $('gateStore').style.display='none';
+  $('mainApp').style.display='block';
+  attachListeners();
+  loadSettingsLocal();
+}
+$('storeCodePill').addEventListener('click', ()=>{
+  navigator.clipboard?.writeText(storeCode);
+  toast('Store code copied — share it with your team');
+});
+
+$('btnLeaveStore').addEventListener('click', async ()=>{
+  if(currentStoreMemberCount<=1){
+    toast("You're the only member — remove/delete the store from Firebase console instead, or add another member first.", 'err');
+    return;
+  }
+  if(!confirm(`Leave "${$('activeStoreName').textContent}"? You'll need the store code to rejoin later.`)) return;
+  try{
+    await updateDoc(doc(db,'stores',storeCode), { members: arrayRemove(currentUser.uid) });
+    try{ await deleteDoc(doc(db,'stores',storeCode,'memberInfo',currentUser.uid)); }catch(e){}
+    leaveStoreListeners();
+    localStorage.removeItem('shelfticket-store-code');
+    toast('You left the store');
+    showStoreGate();
+  }catch(e){ toast('Could not leave: '+e.message, 'err'); }
+});
+
+$('btnMembers').addEventListener('click', async ()=>{
+  openModal('overlayMembers');
+  const list = $('membersList');
+  list.innerHTML = '<p class="hint">Loading…</p>';
+  try{
+    const snap = await getDoc(doc(db,'stores',storeCode));
+    const members = snap.data().members || [];
+    const infoSnap = await getDocs(collection(db,'stores',storeCode,'memberInfo'));
+    const info = {};
+    infoSnap.forEach(d=> info[d.id] = d.data());
+    list.innerHTML = '';
+    members.forEach(uid=>{
+      const email = info[uid]?.email || '(email unknown — joined before tracking was added)';
+      const joined = info[uid]?.joinedAt ? new Date(info[uid].joinedAt).toLocaleDateString() : '';
+      const isYou = uid === currentUser.uid;
+      const isOwner = uid === currentStoreOwnerUid;
+      const canRemove = isYou || isOwner===false && (currentUser.uid===currentStoreOwnerUid || isAdminUser);
+      const row = document.createElement('div');
+      row.className = 'member-row';
+      row.innerHTML = `<div class="who"><b>${escapeHtml(email)}${isYou?'<span class="you-badge">YOU</span>':''}${isOwner?'<span class="owner-badge">OWNER</span>':''}</b><span>${joined?'Joined '+joined:''}</span></div>`;
+      if(canRemove && !isOwner){
+        const btn = document.createElement('button');
+        btn.className = 'btn ghost';
+        btn.style.color = 'var(--red)';
+        btn.textContent = isYou ? 'Leave' : 'Remove';
+        btn.addEventListener('click', async ()=>{
+          if(isYou){ closeModal('overlayMembers'); $('btnLeaveStore').click(); return; }
+          if(!confirm(`Remove ${email} from this store?`)) return;
+          try{
+            await updateDoc(doc(db,'stores',storeCode), { members: arrayRemove(uid) });
+            try{ await deleteDoc(doc(db,'stores',storeCode,'memberInfo',uid)); }catch(e){}
+            toast('Member removed');
+            $('btnMembers').click();
+          }catch(e){ toast('Could not remove: '+e.message, 'err'); }
+        });
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML = `<p class="hint">Couldn't load members: ${escapeHtml(e.message)}</p>`;
+  }
+});
+
+function leaveStoreListeners(){
+  if(unsubProducts) unsubProducts();
+  if(unsubQueue) unsubQueue();
+  if(unsubBatches) unsubBatches();
+  products = []; queue = []; batches = [];
+}
+
+/* ===================== Firestore live listeners ===================== */
+function attachListeners(){
+  setSyncPill('syncing');
+  unsubProducts = onSnapshot(collection(db,'stores',storeCode,'products'), snap=>{
+    products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderTable();
+    setSyncPill('synced');
+  }, err=>{ setSyncPill('offline'); toast('Sync error: '+err.message,'err'); });
+
+  unsubQueue = onSnapshot(collection(db,'stores',storeCode,'queue'), snap=>{
+    queue = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderQueue();
+    setSyncPill('synced');
+  }, err=>{ setSyncPill('offline'); toast('Sync error: '+err.message,'err'); });
+
+  unsubBatches = onSnapshot(collection(db,'stores',storeCode,'batches'), snap=>{
+    batches = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    renderBatches();
+    setSyncPill('synced');
+  }, err=>{ setSyncPill('offline'); toast('Sync error: '+err.message,'err'); });
+}
+
+/* Settings stay local per-device (display preference), not cloud-synced */
+function loadSettingsLocal(){
+  try{
+    const s = localStorage.getItem('shelfticket-settings');
+    if(s) settings = Object.assign(settings, JSON.parse(s));
+  }catch(e){}
+  renderTable(); renderQueue();
+}
+function saveSettingsLocal(){ localStorage.setItem('shelfticket-settings', JSON.stringify(settings)); }
+
+/* ===================== Tabs ===================== */
+$('tabCatalog').addEventListener('click', ()=>{
+  ['tabCatalog','tabQueue','tabBatches'].forEach(id=>$(id).classList.remove('active'));
+  ['catalogView','queueView','batchesView'].forEach(id=>$(id).style.display='none');
+  $('tabCatalog').classList.add('active'); $('catalogView').style.display='';
+});
+$('tabQueue').addEventListener('click', ()=>{
+  ['tabCatalog','tabQueue','tabBatches'].forEach(id=>$(id).classList.remove('active'));
+  ['catalogView','queueView','batchesView'].forEach(id=>$(id).style.display='none');
+  $('tabQueue').classList.add('active'); $('queueView').style.display='';
+});
+$('tabBatches').addEventListener('click', ()=>{
+  ['tabCatalog','tabQueue','tabBatches'].forEach(id=>$(id).classList.remove('active'));
+  ['catalogView','queueView','batchesView'].forEach(id=>$(id).style.display='none');
+  $('tabBatches').classList.add('active'); $('batchesView').style.display='';
+});
+
+/* ===================== Render catalog table ===================== */
+function renderTable(){
+  const q = $('searchBox').value.trim().toLowerCase();
+  const tbody = $('tbody');
+  tbody.innerHTML = '';
+  const filtered = products.filter(p => !q || p.name.toLowerCase().includes(q) || (p.barcode||'').toLowerCase().includes(q));
+  const barcodeCounts = {};
+  products.forEach(p=>{ if(p.barcode) barcodeCounts[p.barcode] = (barcodeCounts[p.barcode]||0)+1; });
+  const dupCount = Object.values(barcodeCounts).filter(c=>c>1).length;
+  $('dupWarningBanner').style.display = dupCount ? 'flex' : 'none';
+  if(dupCount) $('dupWarningText').textContent = `${dupCount} barcode${dupCount>1?'s are':' is'} used by more than one product — scanning ${dupCount>1?'them':'it'} may match the wrong item.`;
+  $('emptyState').style.display = products.length ? 'none' : 'block';
+  $('productTable').style.display = products.length ? 'table' : 'none';
+  $('thMrp').style.display = settings.mrp ? '' : 'none';
+  $('thUnit').style.display = settings.unit ? '' : 'none';
+  $('thCat').style.display = settings.category ? '' : 'none';
+
+  filtered.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.dataset.id = p.id;
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(p.name)}<small>${escapeHtml(p.qty||'')}${p.updatedByEmail?' · '+escapeHtml(p.updatedByEmail.split('@')[0]):''}</small></td>
+      <td class="cell-barcode ${barcodeCounts[p.barcode]>1?'dup':''}">${escapeHtml(p.barcode||'')}${barcodeCounts[p.barcode]>1?' <span class="dup-flag" title="This barcode is also used by another product">⚠ duplicate</span>':''}</td>
+      <td class="cell-price">${settings.currency}${Number(p.price||0).toFixed(2)}</td>
+      <td style="display:${settings.mrp?'':'none'}" class="cell-mrp">${p.mrp?settings.currency+Number(p.mrp).toFixed(2):'—'}</td>
+      <td>${escapeHtml(p.qty||'—')}</td>
+      <td style="display:${settings.unit?'':'none'}">${escapeHtml(p.unit||'—')}</td>
+      <td style="display:${settings.category?'':'none'}">${escapeHtml(p.category||'—')}</td>
+      <td><div style="display:flex;gap:5px;align-items:center;">
+        <input type="number" min="1" value="1" class="qty-input addQtyInput">
+        <button class="icon-btn add addQueueBtn" title="Add to queue"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div></td>
+      <td>
+        <button class="icon-btn editBtn" title="Edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg></button>
+        <button class="icon-btn del delBtn" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>
+      </td>`;
+    tbody.appendChild(tr);
+
+    tr.querySelector('.addQueueBtn').addEventListener('click', ()=>{
+      const qty = Math.max(1, parseInt(tr.querySelector('.addQtyInput').value)||1);
+      const type = $('ticketTypeInput').value;
+      addToQueue(p, qty, $('bayInput').value, type);
+      toast(`Added ${qty} × ${p.name} to queue`);
+    });
+    tr.querySelector('.editBtn').addEventListener('click', ()=> openEdit(p.id));
+    tr.querySelector('.delBtn').addEventListener('click', async ()=>{
+      if(confirm(`Delete "${p.name}" from the catalog?`)){
+        try{ await deleteDoc(doc(db,'stores',storeCode,'products',p.id)); }catch(e){ toast('Delete failed: '+e.message,'err'); }
+      }
+    });
+  });
+  $('statTotal').textContent = products.length;
+  $('tabCatalogCount').textContent = products.length;
+}
+$('searchBox').addEventListener('input', renderTable);
+
+/* ===================== Print queue ===================== */
+function typeConfig(type){
+  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo'};
+  if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo'};
+  if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo'};
+  return {cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag'};
+}
+function isPromoType(type){ return type==='a5' || type==='a4' || type==='a7'; }
+async function addToQueue(product, qty, bay, type){
+  qty = Math.max(1, qty||1);
+  bay = (bay||'').trim();
+  type = type || 'shelf';
+  const existing = queue.find(q=>q.barcode===product.barcode && (q.bay||'')===bay && (q.type||'shelf')===type);
+  try{
+    if(existing){
+      await updateDoc(doc(db,'stores',storeCode,'queue',existing.id), {
+        copies: (existing.copies||0)+qty,
+        lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
+      });
+    } else {
+      await addDoc(collection(db,'stores',storeCode,'queue'), {
+        barcode: product.barcode, name: product.name, price: product.price||0,
+        mrp: product.mrp||null, qty: product.qty||'', unit: product.unit||'',
+        category: product.category||'', expiry: product.expiry||'', bay, copies: qty,
+        type, promoLabel: '', saleStart: '', saleEnd: '',
+        addedByEmail: currentUser.email, addedAt: Date.now(),
+        lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
+      });
+    }
+  }catch(e){ toast('Could not add to queue: '+e.message, 'err'); }
+}
+
+function renderQueue(){
+  const tbody = $('queueBody');
+  tbody.innerHTML = '';
+  const sorted = [...queue].sort((a,b)=> (a.bay||'').localeCompare(b.bay||'') || a.name.localeCompare(b.name));
+  $('queueEmpty').style.display = queue.length ? 'none' : 'block';
+  $('queueTable').style.display = queue.length ? 'table' : 'none';
+
+  sorted.forEach(entry=>{
+    const type = entry.type || 'shelf';
+    const promoDisabled = type==='shelf' ? 'disabled title="Only used on promo tickets"' : '';
+    const tr = document.createElement('tr');
+    tr.dataset.id = entry.id;
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(entry.name)}<small>${escapeHtml(entry.qty||'')}${entry.addedByEmail?' · added by '+escapeHtml(entry.addedByEmail.split('@')[0]):''}</small></td>
+      <td><input type="text" class="bay-edit-input bayEdit" value="${escapeHtml(entry.bay||'')}" placeholder="—"></td>
+      <td><select class="bay-edit-input typeEdit">
+        <option value="shelf" ${type==='shelf'?'selected':''}>Shelf tag</option>
+        <option value="a7" ${type==='a7'?'selected':''}>Promo A7</option>
+        <option value="a5" ${type==='a5'?'selected':''}>Promo A5</option>
+        <option value="a4" ${type==='a4'?'selected':''}>Promo A4</option>
+      </select></td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <input type="text" class="bay-edit-input promoEdit" style="width:100%;" value="${escapeHtml(entry.promoLabel||'')}" placeholder="Label e.g. SALE" ${promoDisabled}>
+          <div style="display:flex;gap:4px;">
+            <input type="date" class="bay-edit-input saleStartEdit" style="width:50%;padding:5px 6px;" value="${entry.saleStart||''}" ${promoDisabled}>
+            <input type="date" class="bay-edit-input saleEndEdit" style="width:50%;padding:5px 6px;" value="${entry.saleEnd||''}" ${promoDisabled}>
+          </div>
+        </div>
+      </td>
+      <td class="cell-barcode">${escapeHtml(entry.barcode||'')}</td>
+      <td class="cell-price">${settings.currency}${Number(entry.price||0).toFixed(2)}</td>
+      <td><input type="number" min="0" class="copies-input copiesEdit" value="${entry.copies}"></td>
+      <td><button class="icon-btn del removeBtn" title="Remove"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button></td>`;
+    tbody.appendChild(tr);
+
+    tr.querySelector('.bayEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { bay: e.target.value.trim() }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.typeEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { type: e.target.value }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.promoEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { promoLabel: e.target.value.trim() }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.saleStartEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { saleStart: e.target.value }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.saleEndEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { saleEnd: e.target.value }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.copiesEdit').addEventListener('change', async e=>{
+      const v = Math.max(0, parseInt(e.target.value)||0);
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { copies: v }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.removeBtn').addEventListener('click', async ()=>{
+      try{ await deleteDoc(doc(db,'stores',storeCode,'queue',entry.id)); }catch(err){ toast('Remove failed','err'); }
+    });
+  });
+  updateQueueStats();
+}
+function countPages(list){
+  let pages = 0;
+  ['shelf','a7','a5','a4'].forEach(type=>{
+    const items = list.filter(t=>(t.type||'shelf')===type);
+    if(!items.length) return;
+    const cfg = typeConfig(type);
+    pages += Math.ceil(items.length / (cfg.cols*cfg.rows));
+  });
+  return pages;
+}
+function updateQueueStats(){
+  $('statQueue').textContent = queue.length;
+  $('tabQueueCount').textContent = queue.length;
+  const tickets = queue.reduce((a,q)=>a+Math.max(0,q.copies||0),0);
+  $('statTickets').textContent = tickets;
+  $('statPages').textContent = tickets ? countPages(buildTicketList()) : 0;
+}
+$('btnClearQueue').addEventListener('click', async ()=>{
+  if(!queue.length) return;
+  if(!confirm('Clear the entire print queue for this store?')) return;
+  try{
+    const batch = writeBatch(db);
+    queue.forEach(q=> batch.delete(doc(db,'stores',storeCode,'queue',q.id)));
+    await batch.commit();
+    toast('Queue cleared');
+  }catch(e){ toast('Clear failed: '+e.message,'err'); }
+});
+
+/* ===================== Batches (saved, reprintable ticket runs) ===================== */
+$('btnSaveBatch').addEventListener('click', ()=>{
+  if(!queue.length){ toast('Your print queue is empty — nothing to save', 'err'); return; }
+  $('batchName').value=''; $('batchAisle').value=''; $('batchBay').value=''; $('batchZone').value='';
+  $('batchClearAfter').checked = true;
+  openModal('overlaySaveBatch');
+});
+$('btnConfirmSaveBatch').addEventListener('click', async ()=>{
+  const name = $('batchName').value.trim();
+  const aisle = $('batchAisle').value.trim();
+  const bay = $('batchBay').value.trim();
+  const zone = $('batchZone').value.trim();
+  const clearAfter = $('batchClearAfter').checked;
+  const ticketCount = queue.reduce((a,q)=>a+Math.max(0,q.copies||0),0);
+  try{
+    const batchRef = await addDoc(collection(db,'stores',storeCode,'batches'), {
+      name: name || `Batch — ${new Date().toLocaleDateString()}`,
+      aisle, bay, zone,
+      itemCount: queue.length, ticketCount,
+      createdAt: Date.now(), createdByEmail: currentUser.email,
+      printed: false, printedAt: null, printedByEmail: null,
+    });
+    const wb = writeBatch(db);
+    queue.forEach(q=>{
+      const itemData = {...q}; delete itemData.id;
+      wb.set(doc(collection(db,'stores',storeCode,'batches',batchRef.id,'items')), itemData);
+    });
+    await wb.commit();
+    if(clearAfter){
+      const clearWb = writeBatch(db);
+      queue.forEach(q=> clearWb.delete(doc(db,'stores',storeCode,'queue',q.id)));
+      await clearWb.commit();
+    }
+    closeModal('overlaySaveBatch');
+    $('tabBatches').click();
+    toast('Batch saved');
+  }catch(e){ toast('Could not save batch: '+e.message, 'err'); }
+});
+
+function renderBatches(){
+  const tbody = $('batchesBody');
+  tbody.innerHTML = '';
+  $('batchesEmpty').style.display = batches.length ? 'none' : 'block';
+  $('batchesTable').style.display = batches.length ? 'table' : 'none';
+  $('tabBatchesCount').textContent = batches.length;
+
+  batches.forEach(b=>{
+    const locBits = [];
+    if(b.aisle) locBits.push(`<span class="loc-pill">Aisle ${escapeHtml(b.aisle)}</span>`);
+    if(b.bay) locBits.push(`<span class="loc-pill">Bay ${escapeHtml(b.bay)}</span>`);
+    if(b.zone) locBits.push(`<span class="loc-pill">Zone ${escapeHtml(b.zone)}</span>`);
+    const locHtml = locBits.length ? locBits.join(' ') : '<span class="hint">—</span>';
+    const created = b.createdAt ? new Date(b.createdAt).toLocaleString() : '';
+    const statusHtml = b.printed
+      ? `<span class="status-pill printed">Printed ${b.printedAt?new Date(b.printedAt).toLocaleDateString():''}</span>`
+      : `<span class="status-pill notprinted">Not printed yet</span>`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(b.name)}<small>${b.itemCount||0} item(s) · by ${escapeHtml((b.createdByEmail||'').split('@')[0])}</small></td>
+      <td>${locHtml}</td>
+      <td class="cell-price">${b.ticketCount||0}</td>
+      <td class="cell-barcode">${escapeHtml(created)}</td>
+      <td>${statusHtml}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn ghost" style="padding:6px 10px;" data-action="preview">Preview &amp; Print</button>
+        <button class="icon-btn del" data-action="delete" title="Delete batch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>
+      </td>`;
+    tbody.appendChild(tr);
+    tr.querySelector('[data-action="preview"]').addEventListener('click', ()=> previewBatch(b));
+    tr.querySelector('[data-action="delete"]').addEventListener('click', async ()=>{
+      if(!confirm(`Delete batch "${b.name}"? This can't be undone.`)) return;
+      try{
+        const itemsSnap = await getDocs(collection(db,'stores',storeCode,'batches',b.id,'items'));
+        const wb = writeBatch(db);
+        itemsSnap.forEach(d=> wb.delete(d.ref));
+        wb.delete(doc(db,'stores',storeCode,'batches',b.id));
+        await wb.commit();
+        toast('Batch deleted');
+      }catch(e){ toast('Delete failed: '+e.message, 'err'); }
+    });
+  });
+}
+
+let activePreviewBatchId = null;
+async function previewBatch(b){
+  try{
+    const itemsSnap = await getDocs(collection(db,'stores',storeCode,'batches',b.id,'items'));
+    const items = itemsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    const list = buildTicketList(items);
+    if(!list.length){ toast('This batch has no tickets', 'err'); return; }
+    currentPreviewList = list;
+    activePreviewBatchId = b.id;
+    $('previewCount').textContent = list.length;
+    $('previewPages').textContent = countPages(list);
+    $('previewInner').innerHTML = buildPagesHtml(list);
+    renderBarcodes($('previewInner'));
+    openModal('overlayPreview');
+  }catch(e){ toast('Could not load batch: '+e.message, 'err'); }
+}
+
+/* ===================== Add / Edit product ===================== */
+function resetForm(){ ['fId','fName','fBarcode','fPrice','fMrp','fQty','fUnit','fCategory','fExpiry'].forEach(id=>$(id).value=''); }
+$('btnAdd').addEventListener('click', ()=>{ resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
+$('btnAdd2').addEventListener('click', ()=>{ resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
+
+function openEdit(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  $('fId').value = p.id; $('fName').value = p.name||''; $('fBarcode').value = p.barcode||'';
+  $('fPrice').value = p.price??''; $('fMrp').value = p.mrp??''; $('fQty').value = p.qty||'';
+  $('fUnit').value = p.unit||''; $('fCategory').value = p.category||''; $('fExpiry').value = p.expiry||'';
+  $('formTitle').textContent = 'Edit product';
+  openModal('overlayForm');
+}
+
+$('btnSaveProduct').addEventListener('click', async ()=>{
+  const name = $('fName').value.trim();
+  const barcode = $('fBarcode').value.trim();
+  const price = parseFloat($('fPrice').value);
+  if(!name || !barcode || isNaN(price)){ toast('Name, barcode and price are required', 'err'); return; }
+  const id = $('fId').value;
+  const data = {
+    name, barcode, price,
+    mrp: $('fMrp').value ? parseFloat($('fMrp').value) : null,
+    qty: $('fQty').value.trim(), unit: $('fUnit').value.trim(),
+    category: $('fCategory').value.trim(), expiry: $('fExpiry').value.trim(),
+    updatedByEmail: currentUser.email, updatedAt: Date.now(),
+  };
+  // Warn if you're editing a product's barcode into a collision with a
+  // *different* existing product (Add already merges into a match on
+  // purpose, so this check only applies when editing).
+  if(id){
+    const clash = products.find(x=> x.barcode===barcode && x.id!==id);
+    if(clash){
+      const proceed = confirm(`The barcode "${barcode}" is already used by "${clash.name}".\n\nSaving anyway means scanning this barcode could match either product. Save anyway?`);
+      if(!proceed) return;
+    }
+  }
+  try{
+    if(id){
+      await updateDoc(doc(db,'stores',storeCode,'products',id), data);
+      toast('Product updated');
+    } else {
+      const existing = products.find(x=>x.barcode===barcode);
+      if(existing){ await updateDoc(doc(db,'stores',storeCode,'products',existing.id), data); toast('Existing barcode — product updated'); }
+      else { await addDoc(collection(db,'stores',storeCode,'products'), data); toast('Product added'); }
+    }
+    closeModal('overlayForm');
+  }catch(e){ toast('Save failed: '+e.message, 'err'); }
+});
+
+/* ===================== Import (Excel / CSV) ===================== */
+$('btnImport').addEventListener('click', ()=> $('fileInput').click());
+$('fileInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    Papa.parse(file, { header:true, skipEmptyLines:true, complete: res => beginImport(res.data, res.meta.fields) });
+  } else {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      const headers = rows.length ? Object.keys(rows[0]) : [];
+      beginImport(rows, headers);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  e.target.value = '';
+});
+
+const FIELD_DEFS = [
+  {key:'name', label:'Product name', required:true, guesses:['name','product','product name','item','description','title']},
+  {key:'barcode', label:'Barcode', required:true, guesses:['barcode','ean','upc','sku','code','scan code']},
+  {key:'price', label:'Price', required:true, guesses:['price','sell price','selling price','rate','mrp price','sale price']},
+  {key:'mrp', label:'MRP (optional)', required:false, guesses:['mrp','list price','original price','max retail price']},
+  {key:'qty', label:'Qty / pack size', required:false, guesses:['qty','quantity','pack size','size','weight','pack']},
+  {key:'unit', label:'Unit', required:false, guesses:['unit','uom','measure']},
+  {key:'category', label:'Category', required:false, guesses:['category','department','section']},
+  {key:'expiry', label:'Best before / expiry', required:false, guesses:['expiry','best before','exp date','expiration']},
+];
+
+function beginImport(rows, headers){
+  pendingImportRows = rows;
+  importHeaders = headers || (rows.length? Object.keys(rows[0]) : []);
+  if(!rows.length){ toast('No rows found in that file', 'err'); return; }
+  $('importRowCount').textContent = rows.length;
+  $('importStoreName').textContent = $('activeStoreName').textContent;
+  const mapTable = $('mapTable');
+  mapTable.innerHTML = '';
+  FIELD_DEFS.forEach(fd=>{
+    const guess = importHeaders.find(h => fd.guesses.includes(h.trim().toLowerCase()));
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fd.label}${fd.required?' <span class="req">*</span>':''}</td><td>
+      <select data-key="${fd.key}"><option value="">— not in file —</option>
+      ${importHeaders.map(h=>`<option value="${escapeHtml(h)}" ${h===guess?'selected':''}>${escapeHtml(h)}</option>`).join('')}
+      </select></td>`;
+    mapTable.appendChild(tr);
+  });
+  openModal('overlayImport');
+}
+
+$('btnConfirmImport').addEventListener('click', async ()=>{
+  const mapping = {};
+  $('mapTable').querySelectorAll('select').forEach(sel=>{ mapping[sel.dataset.key] = sel.value; });
+  if(!mapping.name || !mapping.barcode || !mapping.price){ toast('Please map name, barcode and price', 'err'); return; }
+
+  const byBarcode = new Map(products.map(p=>[p.barcode, p.id]));
+  const seenInFile = new Set();
+  let added=0, updated=0, skipped=0, fileDupes=0, batch = writeBatch(db), opsInBatch=0;
+  const commits = [];
+
+  for(const row of pendingImportRows){
+    const name = String(row[mapping.name]||'').trim();
+    const barcode = String(row[mapping.barcode]||'').trim();
+    const priceRaw = row[mapping.price];
+    const price = parseFloat(String(priceRaw).replace(/[^0-9.\-]/g,''));
+    if(!name || !barcode || isNaN(price)){ skipped++; continue; }
+    if(seenInFile.has(barcode)) fileDupes++;
+    seenInFile.add(barcode);
+    const data = {
+      name, barcode, price,
+      mrp: mapping.mrp && row[mapping.mrp]!=='' ? parseFloat(String(row[mapping.mrp]).replace(/[^0-9.\-]/g,'')) : null,
+      qty: mapping.qty ? String(row[mapping.qty]||'').trim() : '',
+      unit: mapping.unit ? String(row[mapping.unit]||'').trim() : '',
+      category: mapping.category ? String(row[mapping.category]||'').trim() : '',
+      expiry: mapping.expiry ? String(row[mapping.expiry]||'').trim() : '',
+      updatedByEmail: currentUser.email, updatedAt: Date.now(),
+    };
+    const existingId = byBarcode.get(barcode);
+    if(existingId){ batch.set(doc(db,'stores',storeCode,'products',existingId), data, {merge:true}); updated++; }
+    else {
+      const newRef = doc(collection(db,'stores',storeCode,'products'));
+      batch.set(newRef, data);
+      byBarcode.set(barcode, newRef.id);
+      added++;
+    }
+    opsInBatch++;
+    if(opsInBatch>=400){ commits.push(batch.commit()); batch = writeBatch(db); opsInBatch=0; }
+  }
+  if(opsInBatch>0) commits.push(batch.commit());
+
+  try{
+    await Promise.all(commits);
+    closeModal('overlayImport');
+    const dupNote = fileDupes ? ` — ${fileDupes} row(s) shared a barcode with another row in the file; the last one won` : '';
+    toast(`Imported: ${added} added, ${updated} updated${skipped?`, ${skipped} skipped`:''}${dupNote}`, fileDupes?'warn':undefined);
+  }catch(e){ toast('Import failed: '+e.message, 'err'); }
+});
+
+/* ===================== USB / Bluetooth scanner ===================== */
+$('btnScanToggle').addEventListener('click', ()=>{
+  $('scanBar').classList.toggle('active');
+  if($('scanBar').classList.contains('active')){ $('scanInput').focus(); }
+});
+$('btnScanClose').addEventListener('click', ()=> $('scanBar').classList.remove('active'));
+$('scanInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const code = e.target.value.trim();
+    e.target.value = '';
+    if(code) handleScan(code);
+  }
+});
+document.addEventListener('click', e=>{
+  if($('scanBar').classList.contains('active') && !e.target.closest('.overlay')){
+    setTimeout(()=> $('scanInput').focus(), 30);
+  }
+});
+
+/* ===================== Scan sounds ===================== */
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; }
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, duration, type){
+  if(!settings.beepOnScan) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  try{
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }catch(e){ /* audio not available — fail silently, scan still works */ }
+}
+function playSuccessBeep(){ playTone(1568, 0.11, 'sine'); }
+function playErrorBeep(){
+  playTone(280, 0.16, 'square');
+  setTimeout(()=> playTone(220, 0.2, 'square'), 140);
+}
+
+function handleScan(code){
+  const p = products.find(x=>x.barcode===code);
+  const bay = $('bayInput').value.trim();
+  const type = $('ticketTypeInput').value;
+  if(p){
+    playSuccessBeep();
+    addToQueue(p, 1, bay, type);
+    toast(`Added to queue — ${p.name}${bay?` (${bay})`:''}`);
+    $('tabQueue').click();
+  } else {
+    playErrorBeep();
+    // Stop the camera first — otherwise it keeps re-detecting this same
+    // unknown barcode every second or two, which re-triggers this same
+    // prompt underneath itself and makes OK/Cancel look unresponsive.
+    closeCameraFn();
+    toast(`Barcode ${code} not found`, 'warn');
+    if(confirm(`Barcode "${code}" isn't in this store's catalog yet.\nAdd it as a new product now?`)){
+      resetForm(); $('fBarcode').value = code; $('formTitle').textContent = 'Add product'; openModal('overlayForm');
+    }
+  }
+}
+
+/* ===================== Camera scanner (mobile) ===================== */
+let quaggaRunning = false;
+$('btnCamera').addEventListener('click', ()=>{
+  openModal('overlayCamera');
+  $('camStatus').textContent = 'Starting camera…';
+  Quagga.init({
+    inputStream:{ type:'LiveStream', target: document.querySelector('#cameraWrap'),
+      constraints:{ facingMode:'environment', width:{ideal:640}, height:{ideal:480} } },
+    decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','codabar_reader'] },
+    locate:true,
+  }, err=>{
+    if(err){ $('camStatus').textContent = 'Could not access camera: '+err.message; return; }
+    Quagga.start(); quaggaRunning = true;
+    $('camStatus').textContent = 'Point your camera at a barcode…';
+  });
+  let lastCode='', lastTime=0;
+  Quagga.onDetected(data=>{
+    const code = data.codeResult.code;
+    const now = Date.now();
+    if(code===lastCode && now-lastTime < 1500) return;
+    lastCode = code; lastTime = now;
+    $('camStatus').textContent = `Detected: ${code}`;
+    handleScan(code);
+  });
+});
+function closeCameraFn(){ closeModal('overlayCamera'); if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; } }
+$('btnCloseCamera').addEventListener('click', closeCameraFn);
+$('btnCloseCamera2').addEventListener('click', closeCameraFn);
+
+/* ===================== Settings ===================== */
+$('btnSettings').addEventListener('click', ()=>{
+  $('optMrp').checked = settings.mrp; $('optUnit').checked = settings.unit;
+  $('optCategory').checked = settings.category; $('optBay').checked = settings.showBay;
+  $('optExpiry').checked = settings.expiry; $('optCurrency').value = settings.currency;
+  $('optCols').value = settings.cols; $('optRows').value = settings.rows;
+  $('optBeep').checked = settings.beepOnScan !== false;
+  openModal('overlaySettings');
+});
+$('btnSaveSettings').addEventListener('click', ()=>{
+  settings.mrp = $('optMrp').checked; settings.unit = $('optUnit').checked;
+  settings.category = $('optCategory').checked; settings.showBay = $('optBay').checked;
+  settings.expiry = $('optExpiry').checked; settings.currency = $('optCurrency').value.trim() || '₹';
+  settings.cols = Math.max(1, parseInt($('optCols').value)||3);
+  settings.rows = Math.max(1, parseInt($('optRows').value)||8);
+  settings.beepOnScan = $('optBeep').checked;
+  closeModal('overlaySettings');
+  renderTable(); renderQueue(); saveSettingsLocal();
+  toast('Settings saved on this device');
+});
+
+/* ===================== Preview & Print ===================== */
+function buildTicketList(sourceArray){
+  const source = sourceArray || queue;
+  const list = [];
+  source.filter(q=>(q.copies||0) > 0).forEach(q=>{ for(let i=0;i<q.copies;i++) list.push(q); });
+  return list;
+}
+function ticketHtml(p){
+  const type = p.type || 'shelf';
+  if(type==='shelf') return shelfTicketHtml(p);
+  return promoTicketHtml(p, type);
+}
+function shelfTicketHtml(p){
+  const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
+  const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
+  const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : (settings.unit && p.unit ? `<span class="t-qty">${escapeHtml(p.unit)}</span>` : '');
+  const mrpHtml = settings.mrp && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
+  const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
+  const svgId = 'bc_'+Math.random().toString(36).slice(2,10);
+  return `<div class="ticket">
+    <div class="t-top"><div class="t-name">${escapeHtml(p.name)}</div><div class="t-meta">${bayHtml}${catHtml}${qtyHtml}</div></div>
+    <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
+    ${expHtml}
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg></div>
+  </div>`;
+}
+function formatDateShort(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  if(isNaN(dt)) return '';
+  return dt.toLocaleDateString(undefined, {day:'numeric', month:'short'});
+}
+function saleDatesHtml(p){
+  if(!p.saleStart && !p.saleEnd) return '';
+  const s = formatDateShort(p.saleStart), e = formatDateShort(p.saleEnd);
+  let text;
+  if(s && e) text = `Valid ${s} – ${e}`;
+  else if(s) text = `From ${s}`;
+  else text = `Until ${e}`;
+  return `<div class="t-sale-dates">${escapeHtml(text)}</div>`;
+}
+function promoTicketHtml(p, type){
+  const discount = (settings.mrp && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
+  const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
+  const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
+  const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : '';
+  const mrpHtml = settings.mrp && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
+  const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
+  const labelHtml = p.promoLabel ? `<div class="t-promo-label">${escapeHtml(p.promoLabel)}</div>` : '';
+  const discountHtml = discount ? `<div class="t-discount">${discount}% OFF</div>` : '';
+  const svgId = 'bc_'+Math.random().toString(36).slice(2,10);
+  return `<div class="ticket promo-ticket">
+    ${labelHtml}${discountHtml}
+    <div class="t-top"><div class="t-name">${escapeHtml(p.name)}</div><div class="t-meta">${bayHtml}${catHtml}${qtyHtml}</div></div>
+    <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
+    ${saleDatesHtml(p)}
+    ${expHtml}
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg></div>
+  </div>`;
+}
+function buildPagesHtml(list){
+  let html = '';
+  ['shelf','a7','a5','a4'].forEach(type=>{
+    const items = list.filter(t=>(t.type||'shelf')===type);
+    if(!items.length) return;
+    const cfg = typeConfig(type);
+    const perPage = cfg.cols * cfg.rows;
+    for(let i=0;i<items.length;i+=perPage){
+      const chunk = items.slice(i, i+perPage);
+      const cells = chunk.map(ticketHtml).join('');
+      const filler = perPage - chunk.length;
+      const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
+      html += `<div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div>`;
+    }
+  });
+  return html;
+}
+function renderBarcodes(root){
+  root.querySelectorAll('.barcode-svg').forEach(svg=>{
+    const code = svg.dataset.code;
+    if(!code) return;
+    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:true, fontSize:9, height:26, margin:0, width:1.1 }); }
+    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:true, fontSize:9, height:26, margin:0, width:1.1 }); }catch(e2){} }
+  });
+}
+let currentPreviewList = [];
+$('btnPreview').addEventListener('click', ()=>{
+  const list = buildTicketList();
+  if(!list.length){ toast('Your queue is empty — add items first', 'err'); return; }
+  currentPreviewList = list;
+  activePreviewBatchId = null;
+  $('previewCount').textContent = list.length;
+  $('previewPages').textContent = countPages(list);
+  $('previewInner').innerHTML = buildPagesHtml(list);
+  renderBarcodes($('previewInner'));
+  openModal('overlayPreview');
+});
+$('btnDoPrint').addEventListener('click', async ()=>{
+  const list = currentPreviewList.length ? currentPreviewList : buildTicketList();
+  if(!list.length){ toast('Nothing to print', 'err'); return; }
+  $('printArea').innerHTML = buildPagesHtml(list);
+  renderBarcodes($('printArea'));
+  setTimeout(()=> window.print(), 80);
+  if(activePreviewBatchId){
+    try{
+      await updateDoc(doc(db,'stores',storeCode,'batches',activePreviewBatchId), {
+        printed: true, printedAt: Date.now(), printedByEmail: currentUser.email,
+      });
+    }catch(e){ /* printing itself still succeeded; don't block on this */ }
+    activePreviewBatchId = null;
+  }
+});
+
+/* ===================== PWA install support ===================== */
+// Registers the service worker so the app is properly "installable" (Chrome
+// desktop/Android will offer an install prompt) and the shell still loads
+// if opened with no signal. Silently no-ops if unsupported — never blocks
+// the app itself.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
