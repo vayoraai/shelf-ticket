@@ -1650,7 +1650,13 @@ $('btnCamera').addEventListener('click', ()=>{
   $('camStatus').textContent = 'Starting camera…';
   Quagga.init({
     inputStream:{ type:'LiveStream', target: document.querySelector('#cameraWrap'),
-      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } },
+      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} },
+      // Only look inside the amber box shown on screen — this is what
+      // actually stops background clutter (a busy floor, other packaging,
+      // shadows) from being mistaken for a barcode. Margins here match the
+      // .scan-frame CSS box (78% wide, 34% tall, centered) exactly.
+      area:{ top:'33%', right:'11%', left:'11%', bottom:'33%' },
+    },
     decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','codabar_reader'] },
     locate:true,
   }, err=>{
