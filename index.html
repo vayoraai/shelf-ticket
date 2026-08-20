@@ -171,7 +171,7 @@ tbody tr.flash{animation:flashRow .9s;}
 .t-mrp{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a8a8a;text-decoration:line-through;margin-left:5px;}
 .t-exp{font-size:7.4px;color:var(--red);font-weight:600;}
 .t-bottom{display:flex;flex-direction:column;align-items:center;flex:none;}
-.t-bottom svg{width:100%;height:auto;max-height:9mm;}
+.t-bottom svg{display:block;max-width:100%;}
 .t-bottom .t-barcode-num{font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:.03em;color:#333;margin-top:.4mm;}
 
 /* Promo tickets (A5 / A4) */
@@ -193,9 +193,9 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA4 .t-mrp{font-size:30px;margin-left:16px;}
 .type-promoA5 .t-exp{font-size:11px;}
 .type-promoA4 .t-exp{font-size:15px;}
-.type-promoA5 .t-bottom svg{max-height:20mm;}
+
 .type-promoA5 .t-barcode-num{font-size:10px;}
-.type-promoA4 .t-bottom svg{max-height:30mm;}
+
 .type-promoA4 .t-barcode-num{font-size:13px;}
 .t-discount{
   position:absolute;top:8mm;right:8mm;background:var(--red);color:#fff;font-weight:800;
@@ -225,7 +225,7 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA7 .t-mrp{font-size:11.5px;margin-left:6px;}
 .type-promoA7 .t-exp{font-size:7.6px;}
 .type-promoA7 .t-sale-dates{font-size:7.6px;}
-.type-promoA7 .t-bottom svg{max-height:9mm;}
+
 .type-promoA7 .t-discount{font-size:10.5px;padding:3px 8px;top:3mm;right:3mm;}
 .type-promoA7 .t-promo-label{font-size:8px;padding:3px 7px;top:3mm;left:3mm;}
 
@@ -1248,7 +1248,10 @@ function renderQueue(){
         <option value="a4" ${type==='a4'?'selected':''}>Promo A4</option>
       </select></td>
       <td>
-        <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--ink);cursor:pointer;">
+            <input type="checkbox" class="promoPriceEdit" ${entry.onPromotion?'checked':''}> On promotion (show MRP struck through)
+          </label>
           <input type="text" class="bay-edit-input promoEdit" style="width:100%;" value="${escapeHtml(entry.promoLabel||'')}" placeholder="Label e.g. SALE" ${promoDisabled}>
           <div style="display:flex;gap:4px;">
             <input type="date" class="bay-edit-input saleStartEdit" style="width:50%;padding:5px 6px;" value="${entry.saleStart||''}" ${promoDisabled}>
@@ -1267,6 +1270,9 @@ function renderQueue(){
     });
     tr.querySelector('.typeEdit').addEventListener('change', async e=>{
       try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { type: e.target.value }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.promoPriceEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { onPromotion: e.target.checked }); }catch(err){ toast('Update failed','err'); }
     });
     tr.querySelector('.promoEdit').addEventListener('change', async e=>{
       try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { promoLabel: e.target.value.trim() }); }catch(err){ toast('Update failed','err'); }
@@ -1790,14 +1796,14 @@ function shelfTicketHtml(p){
   const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
   const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
   const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : (settings.unit && p.unit ? `<span class="t-qty">${escapeHtml(p.unit)}</span>` : '');
-  const mrpHtml = settings.mrp && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
+  const mrpHtml = settings.mrp && p.onPromotion && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
   const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
   const svgId = 'bc_'+Math.random().toString(36).slice(2,10);
   return `<div class="ticket">
     <div class="t-top"><div class="t-name">${escapeHtml(p.name)}</div><div class="t-meta">${bayHtml}${catHtml}${qtyHtml}</div></div>
     <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
     ${expHtml}
-    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}" data-type="shelf"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
   </div>`;
 }
 function formatDateShort(d){
@@ -1816,11 +1822,11 @@ function saleDatesHtml(p){
   return `<div class="t-sale-dates">${escapeHtml(text)}</div>`;
 }
 function promoTicketHtml(p, type){
-  const discount = (settings.mrp && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
+  const discount = (settings.mrp && p.onPromotion && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
   const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
   const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
   const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : '';
-  const mrpHtml = settings.mrp && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
+  const mrpHtml = settings.mrp && p.onPromotion && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
   const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
   const labelHtml = p.promoLabel ? `<div class="t-promo-label">${escapeHtml(p.promoLabel)}</div>` : '';
   const discountHtml = discount ? `<div class="t-discount">${discount}% OFF</div>` : '';
@@ -1831,7 +1837,7 @@ function promoTicketHtml(p, type){
     <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
     ${saleDatesHtml(p)}
     ${expHtml}
-    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}" data-type="${type}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
   </div>`;
 }
 function buildPagesHtml(list){
@@ -1855,12 +1861,18 @@ function renderBarcodes(root){
   root.querySelectorAll('.barcode-svg').forEach(svg=>{
     const code = svg.dataset.code;
     if(!code) return;
-    // displayValue is off here on purpose — the barcode number is now a
-    // separate, guaranteed plain-text element (.t-barcode-num) next to the
-    // SVG, so the number always shows even in the rare case a print
-    // pipeline has trouble with something baked inside the SVG itself.
-    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:false, height:24, margin:0, width:1.1 }); }
-    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:false, height:24, margin:0, width:1.1 }); }catch(e2){} }
+    // Sized directly here rather than via CSS max-height/height:auto — that
+    // combination turned out to be unreliable for scaling SVGs on some
+    // browsers (bars would vanish while everything else rendered fine).
+    // Rendering at the exact intended pixel size per ticket type sidesteps
+    // the problem entirely.
+    const type = svg.dataset.type || 'shelf';
+    const opts = type==='a4' ? {height:60, width:2.2}
+      : type==='a5' ? {height:40, width:1.6}
+      : type==='a7' ? {height:24, width:1.1}
+      : {height:22, width:1};
+    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:false, margin:0, ...opts }); }
+    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:false, margin:0, ...opts }); }catch(e2){} }
   });
 }
 // The ticket page is built at true A4 size (210mm ≈ 794px) so print output is
