@@ -318,6 +318,21 @@ tbody tr.flash{animation:flashRow .9s;}
   </div>
 </div>
 
+<!-- ============ GATE: Forced first-time password set ============ -->
+<!-- Shown once, right after signing in with a one-time setup code an admin
+     handed them — replaces it with a real password they choose, before
+     they can reach any store. Cannot be dismissed without completing it. -->
+<div class="gate" id="gateSetPassword" style="display:none;">
+  <div class="gate-card">
+    <h2>Set your password</h2>
+    <p class="sub">You signed in with a one-time setup code from your admin. Choose a real password now — you'll use this to sign in from here on.</p>
+    <div class="gate-err" id="setPwErr"></div>
+    <div class="field"><label>New password</label><input id="newPwField" type="password" placeholder="At least 6 characters"></div>
+    <div class="field"><label>Confirm new password</label><input id="newPwConfirm" type="password" placeholder="Re-enter it"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;" id="btnSetPassword">Save password &amp; continue</button>
+  </div>
+</div>
+
 <!-- ============ GATE: Store select ============ -->
 <div class="gate" id="gateStore" style="display:none;">
   <div class="gate-card">
@@ -594,7 +609,7 @@ tbody tr.flash{animation:flashRow .9s;}
           <input type="email" id="inviteEmail" placeholder="their.email@store.com" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;">
           <button class="btn primary" id="btnSendInvite">Invite</button>
         </div>
-        <p class="hint" style="margin-top:6px;">For someone who needs full owner-level access (not just staff scanning). They need an account created first (Firebase console); once they sign in with this email, they'll join automatically.</p>
+        <p class="hint" style="margin-top:6px;">For someone who needs full owner-level access (not just staff scanning). You'll get a one-time setup code to share with them directly — works immediately, no email dependency.</p>
         <div id="pendingInvites" style="margin-top:10px;"></div>
       </div>
       <div id="dangerZone" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
@@ -617,21 +632,16 @@ tbody tr.flash{animation:flashRow .9s;}
 
       <div id="adminCreateForm">
         <div class="field"><label>Owner's email</label><input id="acEmail" type="email" placeholder="owner@theirstore.com"></div>
-        <div class="field"><label>Password</label>
-          <div style="display:flex;gap:8px;">
-            <input id="acPassword" type="text" placeholder="At least 6 characters" style="flex:1;">
-            <button class="btn ghost" id="btnGenPassword" type="button">Generate</button>
-          </div>
-        </div>
         <div class="field"><label>Store name (optional — leave blank to only create the login)</label><input id="acStoreName" placeholder="e.g. Riya's Grocery, Epping"></div>
-        <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px;" id="btnAdminCreateSubmit">Create</button>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px;" id="btnAdminCreateSubmit">Create &amp; send invite email</button>
       </div>
 
       <div id="adminCreateResult" style="display:none;">
-        <div class="callout-ok" style="background:#eafaf1;border:1px solid #b7e6cb;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1b6b41;">Account created. Copy these details to the store owner — this password isn't shown again.</div>
+        <div class="callout-ok" style="background:#eafaf1;border:1px solid #b7e6cb;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1b6b41;">Account created. Share the email and setup code below with them directly — text, WhatsApp, whatever's easiest. It also went to their inbox as backup, but don't rely on that.</div>
         <div class="field"><label>Email</label><input id="acResultEmail" readonly style="width:100%;"></div>
-        <div class="field"><label>Password</label><input id="acResultPassword" readonly style="width:100%;"></div>
-        <div class="field" id="acResultCodeField" style="display:none;"><label>Store code</label><input id="acResultCode" readonly style="width:100%;"></div>
+        <div class="field"><label>Setup code (use this as the password to sign in the first time)</label><input id="acResultSetupCode" readonly style="width:100%;font-family:monospace;font-size:16px;letter-spacing:1px;"></div>
+        <div class="field" id="acResultCodeField" style="display:none;"><label>Store code (only needed if they don't land in it automatically)</label><input id="acResultCode" readonly style="width:100%;"></div>
+        <p class="hint">They'll be asked to set a real password the moment they sign in with this code — it only works once.</p>
         <button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px;" id="btnAdminCreateAnother">Create another</button>
       </div>
     </div>
@@ -731,7 +741,7 @@ tbody tr.flash{animation:flashRow .9s;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
-  sendPasswordResetEmail, createUserWithEmailAndPassword, signInAnonymously
+  sendPasswordResetEmail, createUserWithEmailAndPassword, signInAnonymously, updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
@@ -848,12 +858,29 @@ function initFirebase(config){
       }catch(e){ isAdminUser = false; }
       $('gateAuth').style.display='none';
       $('gateStaff').style.display='none';
+
+      // First sign-in with a one-time setup code (from the admin invite
+      // flow) — force a real password before letting them any further in.
+      let needsPasswordSetup = false;
+      try{
+        const metaSnap = await getDoc(doc(db,'userMeta',user.uid));
+        needsPasswordSetup = metaSnap.exists() && metaSnap.data().needsPasswordSetup === true;
+      }catch(e){ needsPasswordSetup = false; }
+      if(needsPasswordSetup){
+        $('gateStore').style.display='none';
+        $('mainApp').style.display='none';
+        $('gateSetPassword').style.display='flex';
+        return;
+      }
+      $('gateSetPassword').style.display='none';
+
       const savedCode = localStorage.getItem('shelfticket-store-code');
       if(savedCode){ enterStore(savedCode); }
       else { showStoreGate(); }
     } else {
       $('gateAuth').style.display='flex';
       $('gateStaff').style.display='none';
+      $('gateSetPassword').style.display='none';
       $('gateStore').style.display='none';
       $('mainApp').style.display='none';
     }
@@ -956,6 +983,36 @@ $('btnChangeConfig').addEventListener('click', ()=>{
 if(new URLSearchParams(location.search).get('dev') === '1'){
   $('btnChangeConfig').style.display = '';
 }
+
+/* ===================== GATE 1b: Forced first-time password set ===================== */
+$('btnSetPassword').addEventListener('click', async ()=>{
+  const pw1 = $('newPwField').value;
+  const pw2 = $('newPwConfirm').value;
+  $('setPwErr').className = 'gate-err';
+  if(pw1.length<6){ $('setPwErr').textContent='Password needs at least 6 characters.'; $('setPwErr').classList.add('show'); return; }
+  if(pw1 !== pw2){ $('setPwErr').textContent="Passwords don't match."; $('setPwErr').classList.add('show'); return; }
+  $('btnSetPassword').disabled = true;
+  try{
+    await updatePassword(currentUser, pw1);
+    await setDoc(doc(db,'userMeta',currentUser.uid), { needsPasswordSetup:false }, {merge:true});
+    $('gateSetPassword').style.display='none';
+    toast('Password set — you\'re in');
+    const savedCode = localStorage.getItem('shelfticket-store-code');
+    if(savedCode){ enterStore(savedCode); } else { showStoreGate(); }
+  }catch(e){
+    // updatePassword can require a recent sign-in for security — if the
+    // setup code was used a while ago, ask them to sign in again first.
+    if(e.code === 'auth/requires-recent-login'){
+      $('setPwErr').textContent = 'For security, please sign in again with your setup code, then set your password right away.';
+      await signOut(auth);
+    } else {
+      $('setPwErr').textContent = e.message;
+    }
+    $('setPwErr').classList.add('show');
+  }finally{
+    $('btnSetPassword').disabled = false;
+  }
+});
 
 /* ===================== GATE 2b: Staff join (no account) ===================== */
 $('btnGoStaffJoin').addEventListener('click', ()=>{
@@ -1321,13 +1378,37 @@ $('btnMembers').addEventListener('click', async ()=>{
 
 $('btnSendInvite').addEventListener('click', async ()=>{
   const email = $('inviteEmail').value.trim().toLowerCase();
+  const btn = $('btnSendInvite');
   if(!email || !email.includes('@')){ toast('Enter a valid email', 'err'); return; }
+  btn.disabled = true;
   try{
+    // Create the login ourselves (on the isolated secondary connection, so
+    // it never touches your own signed-in session). The setup code IS the
+    // real (temporary) password — works immediately regardless of email
+    // deliverability. They're forced to set a permanent one on first sign-in.
+    let accountIsNew = true;
+    let setupCode = null;
+    try{
+      setupCode = genSetupCode();
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, setupCode);
+      await signOut(secondaryAuth);
+      await setDoc(doc(db,'userMeta',cred.user.uid), { needsPasswordSetup:true, email, createdAt:Date.now() });
+    }catch(e){
+      if(e.code === 'auth/email-already-in-use'){ accountIsNew = false; }
+      else throw e;
+    }
     await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayUnion(email) });
+    if(accountIsNew){
+      try{ await sendPasswordResetEmail(auth, email); }catch(e){ /* setup code works regardless */ }
+      prompt(`Share this with ${email} directly (text/WhatsApp) — it's their one-time sign-in code. An email backup was sent too, but don't rely on it:`, setupCode);
+      toast(`${email} can now sign in with that code`);
+    } else {
+      toast(`${email} already has an account — they'll join this store automatically next time they sign in`);
+    }
     $('inviteEmail').value = '';
-    toast(`Invited ${email} — they'll join automatically once they sign in`);
     $('btnMembers').click();
   }catch(e){ toast('Could not send invite: '+e.message, 'err'); }
+  finally{ btn.disabled = false; }
 });
 
 $('btnDeleteStore').addEventListener('click', async ()=>{
@@ -2086,39 +2167,41 @@ $('btnCloseCamera').addEventListener('click', closeCameraFn);
 $('btnCloseCamera2').addEventListener('click', closeCameraFn);
 
 /* ===================== Admin: create store account ===================== */
-function genPassword(){
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from({length:12}, ()=> chars[Math.floor(Math.random()*chars.length)]).join('');
+// Short, typeable code — same alphabet as store codes but generated
+// separately per person, since it doubles as a real (if temporary)
+// password. Reusing the store's own join code here would let any staff
+// member who knows it attempt to sign in as the owner instead.
+function genSetupCode(){
+  return Array.from({length:8}, ()=> "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*33)]).join('');
 }
 $('btnAdminCreate').addEventListener('click', ()=>{
   $('adminCreateForm').style.display = '';
   $('adminCreateResult').style.display = 'none';
   $('adminCreateErr').className = 'gate-err';
-  $('acEmail').value = ''; $('acPassword').value = ''; $('acStoreName').value = '';
+  $('acEmail').value = ''; $('acStoreName').value = '';
   openModal('overlayAdminCreate');
-});
-$('btnGenPassword').addEventListener('click', ()=>{
-  $('acPassword').value = genPassword();
 });
 $('btnAdminCreateAnother').addEventListener('click', ()=>{
   $('adminCreateForm').style.display = '';
   $('adminCreateResult').style.display = 'none';
-  $('acEmail').value = ''; $('acPassword').value = ''; $('acStoreName').value = '';
+  $('acEmail').value = ''; $('acStoreName').value = '';
 });
 $('btnAdminCreateSubmit').addEventListener('click', async ()=>{
-  const email = $('acEmail').value.trim();
-  const pw = $('acPassword').value;
+  const email = $('acEmail').value.trim().toLowerCase();
   const storeName = $('acStoreName').value.trim();
   $('adminCreateErr').className = 'gate-err';
   if(!email || !email.includes('@')){ $('adminCreateErr').textContent='Enter a valid email.'; $('adminCreateErr').classList.add('show'); return; }
-  if(pw.length<6){ $('adminCreateErr').textContent='Password needs at least 6 characters.'; $('adminCreateErr').classList.add('show'); return; }
   $('btnAdminCreateSubmit').disabled = true;
   try{
-    // Runs on the isolated secondary Auth connection, so this never
-    // touches or replaces your own signed-in admin session.
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pw);
+    // Runs on the isolated secondary Auth connection, so this never touches
+    // or replaces your own signed-in admin session. The setup code IS the
+    // account's real (temporary) password — they sign in with it directly,
+    // no email dependency, then are forced to set a permanent one.
+    const setupCode = genSetupCode();
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, setupCode);
     const newUid = cred.user.uid;
     await signOut(secondaryAuth);
+    await setDoc(doc(db,'userMeta',newUid), { needsPasswordSetup:true, email, createdAt:Date.now() });
 
     let code = null;
     if(storeName){
@@ -2126,9 +2209,10 @@ $('btnAdminCreateSubmit').addEventListener('click', async ()=>{
       await setDoc(doc(db,'stores',code), { name: storeName, ownerUid: newUid, members:[newUid], createdAt: Date.now() });
       await setDoc(doc(db,'stores',code,'memberInfo',newUid), { email, joinedAt: Date.now() });
     }
+    try{ await sendPasswordResetEmail(auth, email); }catch(e){ /* setup code works regardless of whether email delivers */ }
 
     $('acResultEmail').value = email;
-    $('acResultPassword').value = pw;
+    $('acResultSetupCode').value = setupCode;
     if(code){ $('acResultCode').value = code; $('acResultCodeField').style.display = ''; }
     else { $('acResultCodeField').style.display = 'none'; }
     $('adminCreateForm').style.display = 'none';
