@@ -2,7 +2,7 @@
 // interface still loads if you open it with no signal. Your actual data
 // (products, queue, batches) always comes fresh from Firestore over the
 // network — this only helps the UI itself appear instantly / offline.
-const CACHE_NAME = 'shelf-ticket-shell-v1';
+const CACHE_NAME = 'vayora-tickets-shell-v1';
 const SHELL_URL = './';
 
 self.addEventListener('install', event => {
