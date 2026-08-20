@@ -351,7 +351,10 @@ tbody tr.flash{animation:flashRow .9s;}
     <h2>Choose a store</h2>
     <p class="sub">You'll only ever see stores you've personally joined — no store can see another's data.</p>
     <div id="adminStoresWrap" style="display:none;margin-bottom:18px;">
-      <label style="display:block;font-size:12px;font-weight:700;color:#b3630f;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="font-size:12px;font-weight:700;color:#b3630f;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnAdminReports">📊 Reports</button>
+      </div>
       <div id="adminStoresList"></div>
     </div>
     <div id="myStoresWrap" style="display:none;margin-bottom:18px;">
@@ -641,6 +644,33 @@ tbody tr.flash{animation:flashRow .9s;}
       </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" data-close="overlayMembers">Close</button></div>
+  </div>
+</div>
+
+<!-- ============ Admin: cross-store reports ============ -->
+<div class="overlay" id="overlayAdminReports">
+  <div class="modal" style="max-width:920px;">
+    <div class="modal-head"><h2>Reports — all stores</h2><button class="icon-btn" data-close="overlayAdminReports">✕</button></div>
+    <div class="modal-body">
+      <div id="adminReportsLoading" style="text-align:center;padding:30px 0;color:var(--ink-soft);">Loading…</div>
+      <div id="adminReportsContent" style="display:none;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Store</th><th>Catalog</th><th>Queued</th><th>Batches</th>
+              <th>Tickets printed</th><th>New from scan</th><th>Active offers</th>
+              <th>Owners</th><th>Staff</th><th>Last activity</th>
+            </tr></thead>
+            <tbody id="adminReportsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" style="display:flex;gap:8px;">
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnRefreshAdminReports">Refresh</button>
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnExportAdminReportsCsv">Export CSV</button>
+      <button class="btn primary" style="flex:1;justify-content:center;" id="btnExportAdminReportsXlsx">Export Excel</button>
+    </div>
   </div>
 </div>
 
@@ -1211,6 +1241,103 @@ async function renderAdminStores(){
     wrap.style.display='none';
   }
 }
+
+/* ===================== Admin: cross-store reports ===================== */
+let lastAdminReportRows = [];
+async function loadAdminReports(){
+  $('adminReportsLoading').style.display = 'block';
+  $('adminReportsContent').style.display = 'none';
+  try{
+    const storesSnap = await getDocs(collection(db,'stores'));
+    const rows = await Promise.all(storesSnap.docs.map(async storeDoc=>{
+      const code = storeDoc.id;
+      const data = storeDoc.data();
+      const [productsSnap, queueSnap, batchesSnap] = await Promise.all([
+        getDocs(collection(db,'stores',code,'products')),
+        getDocs(collection(db,'stores',code,'queue')),
+        getDocs(collection(db,'stores',code,'batches')),
+      ]);
+      let newFromScanCount = 0, lastActivity = data.createdAt||0;
+      productsSnap.forEach(p=>{
+        const pd = p.data();
+        if(pd.newFromScan) newFromScanCount++;
+        if((pd.updatedAt||0) > lastActivity) lastActivity = pd.updatedAt;
+        if((pd.newFromScanAt||0) > lastActivity) lastActivity = pd.newFromScanAt;
+      });
+      let activeOffersCount = 0;
+      queueSnap.forEach(q=>{
+        const qd = q.data();
+        if(qd.offerType) activeOffersCount++;
+        if((qd.addedAt||0) > lastActivity) lastActivity = qd.addedAt;
+        if((qd.lastAddedAt||0) > lastActivity) lastActivity = qd.lastAddedAt;
+      });
+      let ticketsPrinted = 0;
+      batchesSnap.forEach(b=>{
+        const bd = b.data();
+        if(bd.printed) ticketsPrinted += (bd.ticketCount||0);
+        if((bd.createdAt||0) > lastActivity) lastActivity = bd.createdAt;
+        if((bd.printedAt||0) > lastActivity) lastActivity = bd.printedAt;
+      });
+      return {
+        code, name: data.name||code,
+        catalog: productsSnap.size, queued: queueSnap.size, batches: batchesSnap.size,
+        ticketsPrinted, newFromScan: newFromScanCount, activeOffers: activeOffersCount,
+        owners: (data.members||[]).length, staff: (data.staffUids||[]).length,
+        lastActivity,
+      };
+    }));
+    rows.sort((a,b)=> b.lastActivity - a.lastActivity);
+    lastAdminReportRows = rows;
+    renderAdminReportsTable(rows);
+    $('adminReportsLoading').style.display = 'none';
+    $('adminReportsContent').style.display = 'block';
+  }catch(e){
+    $('adminReportsLoading').textContent = 'Could not load reports: '+e.message;
+  }
+}
+function renderAdminReportsTable(rows){
+  const body = $('adminReportsBody');
+  body.innerHTML = '';
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    const when = r.lastActivity ? new Date(r.lastActivity).toLocaleDateString() : '—';
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(r.name)}<small>${escapeHtml(r.code)}</small></td>
+      <td>${r.catalog}</td><td>${r.queued}</td><td>${r.batches}</td>
+      <td>${r.ticketsPrinted}</td><td>${r.newFromScan||'—'}</td><td>${r.activeOffers||'—'}</td>
+      <td>${r.owners}</td><td>${r.staff||'—'}</td><td>${when}</td>`;
+    body.appendChild(tr);
+  });
+}
+$('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
+$('btnRefreshAdminReports').addEventListener('click', loadAdminReports);
+function adminReportRowsForExport(){
+  return lastAdminReportRows.map(r=>({
+    Store: r.name, Code: r.code, Catalog: r.catalog, Queued: r.queued, Batches: r.batches,
+    'Tickets Printed': r.ticketsPrinted, 'New From Scan': r.newFromScan, 'Active Offers': r.activeOffers,
+    Owners: r.owners, Staff: r.staff,
+    'Last Activity': r.lastActivity ? new Date(r.lastActivity).toISOString().slice(0,10) : '',
+  }));
+}
+$('btnExportAdminReportsCsv').addEventListener('click', ()=>{
+  const rows = adminReportRowsForExport();
+  if(!rows.length){ toast('Nothing to export', 'err'); return; }
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `store-reports-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+$('btnExportAdminReportsXlsx').addEventListener('click', ()=>{
+  const rows = adminReportRowsForExport();
+  if(!rows.length){ toast('Nothing to export', 'err'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Store Reports');
+  XLSX.writeFile(wb, `store-reports-${new Date().toISOString().slice(0,10)}.xlsx`);
+});
 $('btnCopyUid').addEventListener('click', ()=>{
   navigator.clipboard?.writeText(currentUser.uid);
   toast('Account ID copied — paste it as the admins/<id> document in Firestore');
