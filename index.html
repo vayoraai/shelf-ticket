@@ -298,7 +298,8 @@ tbody tr.flash{animation:flashRow .9s;}
     </p>
     <div class="or-divider">or</div>
     <button class="btn primary" style="width:100%;justify-content:center;background:var(--green-100);border-color:var(--green-100);color:var(--green-800);" id="btnGoStaffJoin">I'm on staff — join with a store code</button>
-    <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;" id="btnChangeConfig">Use a different Firebase project</button>
+    <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;display:none;" id="btnChangeConfig">Use a different Firebase project</button>
+    <p class="hint" style="text-align:center;margin-top:8px;">Having trouble signing in? Contact your store admin.</p>
   </div>
 </div>
 
@@ -861,6 +862,13 @@ $('btnChangeConfig').addEventListener('click', ()=>{
   localStorage.setItem('shelfticket-skip-default','1');
   location.reload();
 });
+// Hidden on the sign-in screen for real stores/staff — a mistaken tap here
+// locks someone out asking for a raw Firebase config they'll never have.
+// Only shows up if you deliberately open the app with ?dev=1 in the URL,
+// e.g. tickets.vayora.au/?dev=1, for your own testing/switching needs.
+if(new URLSearchParams(location.search).get('dev') === '1'){
+  $('btnChangeConfig').style.display = '';
+}
 
 /* ===================== GATE 2b: Staff join (no account) ===================== */
 $('btnGoStaffJoin').addEventListener('click', ()=>{
