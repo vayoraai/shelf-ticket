@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
-<script src="https://unpkg.com/@zxing/[email protected]"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
 :root{
   --green-900:#173d2e; --green-700:#1f5c41; --green-600:#2d7a52; --green-100:#e6f0e8;
@@ -151,7 +151,7 @@ tbody tr.flash{animation:flashRow .9s;}
 .switch input:checked + .slider:before{transform:translateX(16px);}
 
 #cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;min-height:280px;}
-#cameraWrap video, #cameraWrap canvas{width:100%!important;height:100%!important;object-fit:cover;display:block;position:absolute;top:0;left:0;}
+#cameraWrap video, #cameraWrap canvas{width:100%!important;height:auto!important;display:block;}
 .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:78%;height:34%;border:2px solid var(--amber);border-radius:8px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
 .cam-status{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:10px;}
 .note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
@@ -569,7 +569,7 @@ tbody tr.flash{animation:flashRow .9s;}
   <div class="modal">
     <div class="modal-head"><h2>Scan with phone camera</h2><button class="icon-btn" id="btnCloseCamera">✕</button></div>
     <div class="modal-body">
-      <div id="cameraWrap"><video id="scanVideo" playsinline muted></video><div class="scan-frame"></div></div>
+      <div id="cameraWrap"><div class="scan-frame"></div></div>
       <div class="cam-status" id="camStatus">Point your camera at a barcode…</div>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="btnCloseCamera2">Done</button></div>
@@ -1630,9 +1630,7 @@ function handleScan(code){
 // on glossy/foil packaging or in imperfect lighting. Real barcodes (EAN-8,
 // UPC-A, EAN-13, GTIN-14) carry a built-in check digit specifically so this
 // kind of misread can be caught and rejected automatically, rather than
-// silently accepting a garbled number as if it were correct. ZXing already
-// validates this internally for EAN/UPC, but we re-check here too as a
-// second, independent safety net.
+// silently accepting a garbled number as if it were correct.
 function isValidGtinChecksum(code){
   if(!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)) return true; // can't validate other formats/lengths — let them through
   const digits = code.split('').map(Number);
@@ -1646,61 +1644,50 @@ function isValidGtinChecksum(code){
   return ((10 - (sum % 10)) % 10) === check;
 }
 
-let zxingReader = null;
-let zxingRunning = false;
-$('btnCamera').addEventListener('click', async ()=>{
+let quaggaRunning = false;
+$('btnCamera').addEventListener('click', ()=>{
   openModal('overlayCamera');
   $('camStatus').textContent = 'Starting camera…';
-
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODABAR,
-  ]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-  zxingReader = new ZXing.BrowserMultiFormatReader(hints);
-
-  let lastCode='', lastTime=0, candidateCode='', candidateCount=0;
-  try{
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const backCam = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1];
-    zxingRunning = true;
-    await zxingReader.decodeFromVideoDevice(backCam ? backCam.deviceId : undefined, 'scanVideo', (result, err)=>{
-      if(!result) return;
-      const code = result.getText();
-      const now = Date.now();
-      if(code===lastCode && now-lastTime < 1500) return; // already acted on this one recently
-
-      if(!isValidGtinChecksum(code)){
-        candidateCode=''; candidateCount=0;
-        return;
-      }
-      if(code === candidateCode){
-        candidateCount++;
-      } else {
-        candidateCode = code; candidateCount = 1;
-      }
-      if(candidateCount < 2){
-        $('camStatus').textContent = `Confirming: ${code}…`;
-        return;
-      }
-      lastCode = code; lastTime = now; candidateCode=''; candidateCount=0;
-      $('camStatus').textContent = `Detected: ${code}`;
-      handleScan(code);
-    });
+  Quagga.init({
+    inputStream:{ type:'LiveStream', target: document.querySelector('#cameraWrap'),
+      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } },
+    decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','codabar_reader'] },
+    locate:true,
+  }, err=>{
+    if(err){ $('camStatus').textContent = 'Could not access camera: '+err.message; return; }
+    Quagga.start(); quaggaRunning = true;
     $('camStatus').textContent = 'Point your camera at a barcode…';
-  }catch(err){
-    $('camStatus').textContent = 'Could not access camera: '+(err.message||err);
-  }
+  });
+  let lastCode='', lastTime=0, candidateCode='', candidateCount=0;
+  Quagga.onDetected(data=>{
+    const code = data.codeResult.code;
+    const now = Date.now();
+    if(code===lastCode && now-lastTime < 1500) return; // already acted on this one recently
+
+    if(!isValidGtinChecksum(code)){
+      // Failed its own check digit — almost certainly a misread. Ignore
+      // silently and keep scanning rather than acting on a wrong number.
+      candidateCode=''; candidateCount=0;
+      return;
+    }
+    // Require the same valid code twice in a row before acting on it —
+    // cheap extra insurance against the rare misread that happens to also
+    // pass the checksum by chance.
+    if(code === candidateCode){
+      candidateCount++;
+    } else {
+      candidateCode = code; candidateCount = 1;
+    }
+    if(candidateCount < 2){
+      $('camStatus').textContent = `Confirming: ${code}…`;
+      return;
+    }
+    lastCode = code; lastTime = now; candidateCode=''; candidateCount=0;
+    $('camStatus').textContent = `Detected: ${code}`;
+    handleScan(code);
+  });
 });
-function closeCameraFn(){
-  closeModal('overlayCamera');
-  if(zxingRunning && zxingReader){
-    try{ zxingReader.reset(); }catch(e){}
-    zxingRunning = false;
-  }
-}
+function closeCameraFn(){ closeModal('overlayCamera'); if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; } }
 $('btnCloseCamera').addEventListener('click', closeCameraFn);
 $('btnCloseCamera2').addEventListener('click', closeCameraFn);
 
