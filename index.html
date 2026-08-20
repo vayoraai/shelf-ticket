@@ -1655,16 +1655,28 @@ function handleScan(code){
 // kind of misread can be caught and rejected automatically, rather than
 // silently accepting a garbled number as if it were correct.
 function isValidGtinChecksum(code){
-  if(!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)) return true; // can't validate other formats/lengths — let them through
-  const digits = code.split('').map(Number);
-  const check = digits.pop();
-  let sum = 0;
-  const n = digits.length;
-  for(let i=0;i<n;i++){
-    const posFromRight = n - i;
-    sum += digits[i] * (posFromRight % 2 === 1 ? 3 : 1);
+  if(/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)){
+    const digits = code.split('').map(Number);
+    const check = digits.pop();
+    let sum = 0;
+    const n = digits.length;
+    for(let i=0;i<n;i++){
+      const posFromRight = n - i;
+      sum += digits[i] * (posFromRight % 2 === 1 ? 3 : 1);
+    }
+    return ((10 - (sum % 10)) % 10) === check;
   }
-  return ((10 - (sum % 10)) % 10) === check;
+  if(/^\d+$/.test(code)){
+    // All-digit, but not a standard barcode length (8/12/13/14). For our
+    // use case (EAN-13 product barcodes) this is almost always a partial
+    // or garbled misread — a real barcode wouldn't come out this shape.
+    // Reject rather than trust it, unlike before.
+    return false;
+  }
+  // Contains letters/symbols — genuinely can't checksum-validate (e.g.
+  // CODE128/Codabar content), so let it through; this isn't the numeric
+  // misread pattern being guarded against here.
+  return true;
 }
 
 let quaggaRunning = false;
@@ -1694,7 +1706,7 @@ $('btnCamera').addEventListener('click', ()=>{
       // actually stops background clutter (a busy floor, other packaging,
       // shadows) from being mistaken for a barcode. Margins here match the
       // .scan-frame CSS box (78% wide, 34% tall, centered) exactly.
-      area:{ top:'33%', right:'11%', left:'11%', bottom:'33%' },
+      area:{ top:'20%', right:'5%', left:'5%', bottom:'20%' },
     },
     decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','codabar_reader'] },
     locate:true,
