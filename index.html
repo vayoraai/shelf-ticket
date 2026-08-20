@@ -262,6 +262,10 @@ tbody tr.flash{animation:flashRow .9s;}
 .member-row .who span{font-size:11.5px;color:var(--ink-soft);}
 .member-row .you-badge{background:var(--green-100);color:var(--green-800);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
 .member-row .owner-badge{background:var(--amber-100);color:#8a4d10;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.member-row .staff-badge{background:#eef2fb;color:#3a4d8f;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.staff-tag{display:flex;align-items:center;gap:6px;background:#0f2e21;color:#8fd6ab;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;}
+.staff-tag button{background:none;border:none;color:#cfe8da;font-size:11px;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;}
+.gate-staff-note{background:#eef2fb;border:1px solid #cdd8f5;color:#2d3d75;font-size:12px;padding:9px 12px;border-radius:8px;margin-bottom:14px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -293,7 +297,23 @@ tbody tr.flash{animation:flashRow .9s;}
       <a href="#" id="btnForgotPassword" style="font-size:12.5px;color:var(--green-700);font-weight:600;text-decoration:none;">Forgot your password?</a>
     </p>
     <div class="or-divider">or</div>
-    <button class="btn ghost" style="width:100%;justify-content:center;" id="btnChangeConfig">Use a different Firebase project</button>
+    <button class="btn primary" style="width:100%;justify-content:center;background:var(--green-100);border-color:var(--green-100);color:var(--green-800);" id="btnGoStaffJoin">I'm on staff — join with a store code</button>
+    <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;" id="btnChangeConfig">Use a different Firebase project</button>
+  </div>
+</div>
+
+<!-- ============ GATE: Staff join (no account needed) ============ -->
+<div class="gate" id="gateStaff" style="display:none;">
+  <div class="gate-card">
+    <h2>Join as staff</h2>
+    <p class="sub">No email or password needed — just the store code from your manager, and your name so scans can be tracked back to you.</p>
+    <div class="gate-err" id="staffErr"></div>
+    <div class="field"><label>Store code</label><input id="staffStoreCode" placeholder="e.g. 7XQ2KD" style="text-transform:uppercase;"></div>
+    <div class="field"><label>Your name</label><input id="staffName" placeholder="e.g. Priya"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;" id="btnStaffJoin">Join store</button>
+    <p style="text-align:center;margin:14px 0 0;">
+      <a href="#" id="btnBackToAuth" style="font-size:12.5px;color:var(--green-700);font-weight:600;text-decoration:none;">Back to owner/admin sign in</a>
+    </p>
   </div>
 </div>
 
@@ -355,6 +375,10 @@ tbody tr.flash{animation:flashRow .9s;}
     <span class="code-pill" id="storeCodePill" title="Click to copy invite code">Code: —</span>
     <span id="adminViewBadge" style="display:none;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:20px;">ADMIN VIEW</span>
     <div class="spacer"></div>
+    <div class="staff-tag" id="staffTag" style="display:none;">
+      Scanning as <b id="staffTagName"></b>
+      <button id="btnSwitchName">Not you?</button>
+    </div>
     <button class="btn" id="btnMembers">Staff / members</button>
     <button class="btn" id="btnSwitchStore">Switch / join store</button>
     <button class="btn danger-out" id="btnLeaveStore">Leave store</button>
@@ -511,6 +535,11 @@ tbody tr.flash{animation:flashRow .9s;}
       <p class="hint" style="margin-bottom:14px;">We found <b id="importRowCount">0</b> rows for <b id="importStoreName"></b>. Tell us which column in your file is which.</p>
       <table class="map-table" id="mapTable"></table>
       <div class="hint">Rows missing a name, barcode, or price will be skipped. Matching barcodes update the existing product instead of duplicating.</div>
+      <div class="toggle-row" style="margin-top:10px;">
+        <span>Remove products not in this file (full catalog replace)</span>
+        <label class="switch"><input type="checkbox" id="importRemoveMissing"><span class="slider"></span></label>
+      </div>
+      <div class="hint" id="removeMissingHint" style="display:none;">Any product currently in your catalog whose barcode does <b>not</b> appear in this file will be deleted. Use this when the file is your complete, current product list — not for partial updates.</div>
     </div>
     <div class="modal-foot">
       <button class="btn ghost" data-close="overlayImport">Cancel</button>
@@ -550,13 +579,20 @@ tbody tr.flash{animation:flashRow .9s;}
     <div class="modal-body">
       <p class="hint" style="margin-bottom:14px;">Everyone listed here can view, scan into, and edit this store's catalog and queue.</p>
       <div id="membersList"></div>
+
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Team — staff sign-in (no account needed)</label>
+        <p class="hint" style="margin-bottom:10px;">Staff don't need an email or password. Share your store code — on their own phone they tap <b>"I'm on staff — join with a store code"</b>, enter the code and their name, and they're in. Scans and prints are tagged with their name.</p>
+        <div id="staffList"></div>
+      </div>
+
       <div id="inviteSection" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Invite a teammate</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Invite another owner/admin</label>
         <div style="display:flex;gap:8px;">
           <input type="email" id="inviteEmail" placeholder="their.email@store.com" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;">
           <button class="btn primary" id="btnSendInvite">Invite</button>
         </div>
-        <p class="hint" style="margin-top:6px;">They still need an account created for them first (Firebase console). Once they sign in with this email, they'll join this store automatically — no code needed.</p>
+        <p class="hint" style="margin-top:6px;">For someone who needs full owner-level access (not just staff scanning). They need an account created first (Firebase console); once they sign in with this email, they'll join automatically.</p>
         <div id="pendingInvites" style="margin-top:10px;"></div>
       </div>
       <div id="dangerZone" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
@@ -630,7 +666,7 @@ tbody tr.flash{animation:flashRow .9s;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
-  sendPasswordResetEmail, createUserWithEmailAndPassword
+  sendPasswordResetEmail, createUserWithEmailAndPassword, signInAnonymously
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
@@ -663,6 +699,15 @@ let isAdminUser = false;
 let storeCode = null;
 let currentStoreOwnerUid = null;
 let currentStoreMemberCount = 1;
+// Staff sign in anonymously (no email/password) and are scoped to exactly
+// one store via a code, tracked separately from full members[] so they
+// never see the multi-store gate or owner-level controls.
+let isStaffSession = false;
+let currentStaffName = '';
+function actorLabel(){
+  if(isStaffSession) return currentStaffName || 'Staff';
+  return currentUser?.email || 'Unknown';
+}
 let unsubProducts = null, unsubQueue = null, unsubBatches = null;
 
 let products = [];
@@ -688,6 +733,25 @@ function initFirebase(config){
   try{ enableIndexedDbPersistence(db); }catch(e){ /* multiple tabs open, fine */ }
   onAuthStateChanged(auth, async user=>{
     currentUser = user;
+    if(user && user.isAnonymous){
+      // Staff session — never touches the admin/multi-store gate. Either
+      // resume a remembered store+name on this device, or wait for the
+      // gateStaff form (btnStaffJoin) to tell us where to go.
+      isAdminUser = false;
+      isStaffSession = true;
+      $('gateAuth').style.display='none';
+      $('gateStore').style.display='none';
+      const savedCode = localStorage.getItem('shelfticket-staff-code');
+      const savedName = localStorage.getItem('shelfticket-staff-name');
+      if(savedCode && savedName){
+        currentStaffName = savedName;
+        enterStore(savedCode);
+      } else {
+        $('gateStaff').style.display='flex';
+      }
+      return;
+    }
+    isStaffSession = false;
     if(user){
       isAdminUser = false;
       try{
@@ -695,11 +759,13 @@ function initFirebase(config){
         isAdminUser = adminSnap.exists();
       }catch(e){ isAdminUser = false; }
       $('gateAuth').style.display='none';
+      $('gateStaff').style.display='none';
       const savedCode = localStorage.getItem('shelfticket-store-code');
       if(savedCode){ enterStore(savedCode); }
       else { showStoreGate(); }
     } else {
       $('gateAuth').style.display='flex';
+      $('gateStaff').style.display='none';
       $('gateStore').style.display='none';
       $('mainApp').style.display='none';
     }
@@ -794,6 +860,53 @@ $('btnChangeConfig').addEventListener('click', ()=>{
   localStorage.removeItem('shelfticket-firebase-config');
   localStorage.setItem('shelfticket-skip-default','1');
   location.reload();
+});
+
+/* ===================== GATE 2b: Staff join (no account) ===================== */
+$('btnGoStaffJoin').addEventListener('click', ()=>{
+  $('gateAuth').style.display='none';
+  $('gateStaff').style.display='flex';
+});
+$('btnBackToAuth').addEventListener('click', (e)=>{
+  e.preventDefault();
+  $('gateStaff').style.display='none';
+  $('gateAuth').style.display='flex';
+});
+$('btnStaffJoin').addEventListener('click', async ()=>{
+  const code = $('staffStoreCode').value.trim().toUpperCase();
+  const name = $('staffName').value.trim();
+  $('staffErr').className='gate-err';
+  if(!code){ $('staffErr').textContent='Enter the store code your manager gave you.'; $('staffErr').classList.add('show'); return; }
+  if(!name){ $('staffErr').textContent='Enter your name so scans can be tracked.'; $('staffErr').classList.add('show'); return; }
+  try{
+    // Anonymous auth first so the store lookup below is authenticated —
+    // rules only allow reading a store doc to a signed-in user.
+    if(!auth.currentUser){ await signInAnonymously(auth); }
+    const snap = await getDoc(doc(db,'stores',code));
+    if(!snap.exists()){ $('staffErr').textContent='No store found with that code — double check with your manager.'; $('staffErr').classList.add('show'); return; }
+    const uid = auth.currentUser.uid;
+    await updateDoc(doc(db,'stores',code), { staffUids: arrayUnion(uid) });
+    await setDoc(doc(db,'stores',code,'staffProfiles',uid), { name, joinedAt: Date.now() }, {merge:true});
+    localStorage.setItem('shelfticket-staff-code', code);
+    localStorage.setItem('shelfticket-staff-name', name);
+    currentStaffName = name;
+    isStaffSession = true;
+    $('gateStaff').style.display='none';
+    enterStore(code);
+  }catch(e){
+    $('staffErr').textContent = "Couldn't join: "+e.message; $('staffErr').classList.add('show');
+  }
+});
+$('btnSwitchName').addEventListener('click', async ()=>{
+  const name = prompt('Not you? Enter your name:', currentStaffName||'');
+  if(!name || !name.trim()) return;
+  currentStaffName = name.trim();
+  localStorage.setItem('shelfticket-staff-name', currentStaffName);
+  try{
+    await setDoc(doc(db,'stores',storeCode,'staffProfiles',currentUser.uid), { name: currentStaffName, joinedAt: Date.now() }, {merge:true});
+  }catch(e){ /* local name still switches even if this write fails */ }
+  $('staffTagName').textContent = currentStaffName;
+  toast(`Now scanning as ${currentStaffName}`);
 });
 
 /* ===================== GATE 3: Store select ===================== */
@@ -914,30 +1027,58 @@ $('btnSignOutFromStore').addEventListener('click', ()=> signOut(auth));
 $('btnSignOut').addEventListener('click', ()=>{
   leaveStoreListeners();
   localStorage.removeItem('shelfticket-store-code');
+  localStorage.removeItem('shelfticket-staff-code');
+  localStorage.removeItem('shelfticket-staff-name');
   signOut(auth);
 });
 $('btnSwitchStore').addEventListener('click', ()=>{
   leaveStoreListeners();
-  localStorage.removeItem('shelfticket-store-code');
-  showStoreGate();
+  if(isStaffSession){
+    localStorage.removeItem('shelfticket-staff-code');
+    localStorage.removeItem('shelfticket-staff-name');
+    $('mainApp').style.display='none';
+    $('gateStaff').style.display='flex';
+  } else {
+    localStorage.removeItem('shelfticket-store-code');
+    showStoreGate();
+  }
 });
 
 async function enterStore(code){
   const snap = await getDoc(doc(db,'stores',code));
-  if(!snap.exists()){ localStorage.removeItem('shelfticket-store-code'); showStoreGate(); toast('Store code no longer valid','err'); return; }
+  if(!snap.exists()){
+    if(isStaffSession){ localStorage.removeItem('shelfticket-staff-code'); localStorage.removeItem('shelfticket-staff-name'); $('gateStaff').style.display='flex'; }
+    else { localStorage.removeItem('shelfticket-store-code'); showStoreGate(); }
+    toast('Store code no longer valid','err'); return;
+  }
   storeCode = code;
-  const isMember = (snap.data().members||[]).includes(currentUser.uid);
-  currentStoreOwnerUid = snap.data().ownerUid || null;
-  currentStoreMemberCount = (snap.data().members||[]).length;
+  const data = snap.data();
+  const isMember = (data.members||[]).includes(currentUser.uid);
+  const isStaffMember = (data.staffUids||[]).includes(currentUser.uid);
+  currentStoreOwnerUid = data.ownerUid || null;
+  currentStoreMemberCount = (data.members||[]).length;
   // Don't "remember" this store for next launch unless you're an actual member —
   // an admin browsing in shouldn't get auto-dropped into someone else's store later.
   if(isMember) localStorage.setItem('shelfticket-store-code', code);
-  else localStorage.removeItem('shelfticket-store-code');
-  $('activeStoreName').textContent = snap.data().name;
+  else if(!isStaffSession) localStorage.removeItem('shelfticket-store-code');
+  $('activeStoreName').textContent = data.name;
   $('storeCodePill').textContent = 'Code: '+code;
-  $('adminViewBadge').style.display = (isAdminUser && !isMember) ? 'inline-block' : 'none';
-  $('btnLeaveStore').style.display = isMember ? '' : 'none';
+  $('adminViewBadge').style.display = (isAdminUser && !isMember && !isStaffSession) ? 'inline-block' : 'none';
+
+  if(isStaffSession){
+    $('staffTag').style.display = 'flex';
+    $('staffTagName').textContent = currentStaffName;
+    $('btnLeaveStore').style.display = '';
+    $('btnLeaveStore').textContent = 'Leave (this device)';
+    $('btnMembers').style.display = 'none';   // staff manage nothing here
+  } else {
+    $('staffTag').style.display = 'none';
+    $('btnLeaveStore').textContent = 'Leave store';
+    $('btnLeaveStore').style.display = isMember ? '' : 'none';
+    $('btnMembers').style.display = '';
+  }
   $('gateStore').style.display='none';
+  $('gateStaff').style.display='none';
   $('mainApp').style.display='block';
   attachListeners();
   loadSettingsLocal();
@@ -948,6 +1089,20 @@ $('storeCodePill').addEventListener('click', ()=>{
 });
 
 $('btnLeaveStore').addEventListener('click', async ()=>{
+  if(isStaffSession){
+    if(!confirm(`Remove staff access for "${currentStaffName}" on this device? You'll need the store code again to rejoin.`)) return;
+    try{
+      await updateDoc(doc(db,'stores',storeCode), { staffUids: arrayRemove(currentUser.uid) });
+      try{ await deleteDoc(doc(db,'stores',storeCode,'staffProfiles',currentUser.uid)); }catch(e){}
+      leaveStoreListeners();
+      localStorage.removeItem('shelfticket-staff-code');
+      localStorage.removeItem('shelfticket-staff-name');
+      toast('Left the store');
+      $('mainApp').style.display='none';
+      $('gateStaff').style.display='flex';
+    }catch(e){ toast('Could not leave: '+e.message, 'err'); }
+    return;
+  }
   if(currentStoreMemberCount<=1){
     toast("You're the only member — remove/delete the store from Firebase console instead, or add another member first.", 'err');
     return;
@@ -1006,6 +1161,40 @@ $('btnMembers').addEventListener('click', async ()=>{
       }
       list.appendChild(row);
     });
+
+    // Staff — device sign-in, no Firebase Auth account, tracked separately
+    const staffList = $('staffList');
+    staffList.innerHTML = '';
+    const staffUids = snap.data().staffUids || [];
+    if(!staffUids.length){
+      staffList.innerHTML = '<p class="hint">No staff have joined with the store code yet.</p>';
+    } else {
+      const staffSnap = await getDocs(collection(db,'stores',storeCode,'staffProfiles'));
+      const staffInfo = {};
+      staffSnap.forEach(d=> staffInfo[d.id] = d.data());
+      staffUids.forEach(uid=>{
+        const name = staffInfo[uid]?.name || '(unnamed)';
+        const joined = staffInfo[uid]?.joinedAt ? new Date(staffInfo[uid].joinedAt).toLocaleDateString() : '';
+        const row = document.createElement('div');
+        row.className = 'member-row';
+        row.innerHTML = `<div class="who"><b>${escapeHtml(name)}<span class="staff-badge">STAFF</span></b><span>${joined?'Joined '+joined:''}</span></div>`;
+        if(isAdminUser || isOwnerOfThisStore){
+          const btn = document.createElement('button');
+          btn.className = 'btn ghost'; btn.style.color = 'var(--red)'; btn.textContent = 'Remove';
+          btn.addEventListener('click', async ()=>{
+            if(!confirm(`Remove staff access for "${name}"? Their device will need the store code again to rejoin.`)) return;
+            try{
+              await updateDoc(doc(db,'stores',storeCode), { staffUids: arrayRemove(uid) });
+              try{ await deleteDoc(doc(db,'stores',storeCode,'staffProfiles',uid)); }catch(e){}
+              toast('Staff removed');
+              $('btnMembers').click();
+            }catch(e){ toast('Could not remove: '+e.message, 'err'); }
+          });
+          row.appendChild(btn);
+        }
+        staffList.appendChild(row);
+      });
+    }
 
     if(isAdminUser || isOwnerOfThisStore){
       const pendingWrap = $('pendingInvites');
@@ -1153,7 +1342,7 @@ function renderTable(){
     const tr = document.createElement('tr');
     tr.dataset.id = p.id;
     tr.innerHTML = `
-      <td class="cell-name">${escapeHtml(p.name)}<small>${escapeHtml(p.qty||'')}${p.updatedByEmail?' · '+escapeHtml(p.updatedByEmail.split('@')[0]):''}</small></td>
+      <td class="cell-name">${escapeHtml(p.name)}<small>${escapeHtml(p.qty||'')}${p.updatedByName?' · '+escapeHtml(p.updatedByName.split('@')[0]):(p.updatedByEmail?' · '+escapeHtml(p.updatedByEmail.split('@')[0]):'')}</small></td>
       <td class="cell-barcode ${barcodeCounts[p.barcode]>1?'dup':''}">${escapeHtml(p.barcode||'')}${barcodeCounts[p.barcode]>1?' <span class="dup-flag" title="This barcode is also used by another product">⚠ duplicate</span>':''}</td>
       <td class="cell-price">${settings.currency}${Number(p.price||0).toFixed(2)}</td>
       <td style="display:${settings.mrp?'':'none'}" class="cell-mrp">${p.mrp?settings.currency+Number(p.mrp).toFixed(2):'—'}</td>
@@ -1220,8 +1409,8 @@ async function addToQueue(product, qty, bay, type){
       mrp: product.mrp||null, qty: product.qty||'', unit: product.unit||'',
       category: product.category||'', expiry: product.expiry||'', bay, type,
       copies: increment(qty),
-      addedByEmail: currentUser.email, addedAt: Date.now(),
-      lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
+      addedByEmail: currentUser.email||null, addedByName: actorLabel(), addedAt: Date.now(),
+      lastAddedByEmail: currentUser.email||null, lastAddedByName: actorLabel(), lastAddedAt: Date.now(),
     }, { merge: true });
   }catch(e){ toast('Could not add to queue: '+e.message, 'err'); }
 }
@@ -1239,7 +1428,7 @@ function renderQueue(){
     const tr = document.createElement('tr');
     tr.dataset.id = entry.id;
     tr.innerHTML = `
-      <td class="cell-name">${escapeHtml(entry.name)}<small>${escapeHtml(entry.qty||'')}${entry.addedByEmail?' · added by '+escapeHtml(entry.addedByEmail.split('@')[0]):''}</small></td>
+      <td class="cell-name">${escapeHtml(entry.name)}<small>${escapeHtml(entry.qty||'')}${entry.addedByName?' · added by '+escapeHtml(entry.addedByName.split('@')[0]):(entry.addedByEmail?' · added by '+escapeHtml(entry.addedByEmail.split('@')[0]):'')}</small></td>
       <td><input type="text" class="bay-edit-input bayEdit" value="${escapeHtml(entry.bay||'')}" placeholder="—"></td>
       <td><select class="bay-edit-input typeEdit">
         <option value="shelf" ${type==='shelf'?'selected':''}>Shelf tag</option>
@@ -1340,8 +1529,8 @@ $('btnConfirmSaveBatch').addEventListener('click', async ()=>{
       name: name || `Batch — ${new Date().toLocaleDateString()}`,
       aisle, bay, zone,
       itemCount: queue.length, ticketCount,
-      createdAt: Date.now(), createdByEmail: currentUser.email,
-      printed: false, printedAt: null, printedByEmail: null,
+      createdAt: Date.now(), createdByEmail: currentUser.email||null, createdByName: actorLabel(),
+      printed: false, printedAt: null, printedByEmail: null, printedByName: null,
     });
     const wb = writeBatch(db);
     queue.forEach(q=>{
@@ -1448,7 +1637,7 @@ $('btnSaveProduct').addEventListener('click', async ()=>{
     mrp: $('fMrp').value ? parseFloat($('fMrp').value) : null,
     qty: $('fQty').value.trim(), unit: $('fUnit').value.trim(),
     category: $('fCategory').value.trim(), expiry: $('fExpiry').value.trim(),
-    updatedByEmail: currentUser.email, updatedAt: Date.now(),
+    updatedByEmail: currentUser.email||null, updatedByName: actorLabel(), updatedAt: Date.now(),
   };
   // Warn if you're editing a product's barcode into a collision with a
   // *different* existing product (Add already merges into a match on
@@ -1523,8 +1712,13 @@ function beginImport(rows, headers){
       </select></td>`;
     mapTable.appendChild(tr);
   });
+  $('importRemoveMissing').checked = false;
+  $('removeMissingHint').style.display = 'none';
   openModal('overlayImport');
 }
+$('importRemoveMissing').addEventListener('change', e=>{
+  $('removeMissingHint').style.display = e.target.checked ? 'block' : 'none';
+});
 
 $('btnConfirmImport').addEventListener('click', async ()=>{
   const mapping = {};
@@ -1551,7 +1745,7 @@ $('btnConfirmImport').addEventListener('click', async ()=>{
       unit: mapping.unit ? String(row[mapping.unit]||'').trim() : '',
       category: mapping.category ? String(row[mapping.category]||'').trim() : '',
       expiry: mapping.expiry ? String(row[mapping.expiry]||'').trim() : '',
-      updatedByEmail: currentUser.email, updatedAt: Date.now(),
+      updatedByEmail: currentUser.email||null, updatedByName: actorLabel(), updatedAt: Date.now(),
     };
     const existingId = byBarcode.get(barcode);
     if(existingId){ batch.set(doc(db,'stores',storeCode,'products',existingId), data, {merge:true}); updated++; }
@@ -1566,11 +1760,26 @@ $('btnConfirmImport').addEventListener('click', async ()=>{
   }
   if(opsInBatch>0) commits.push(batch.commit());
 
+  let removed = 0;
+  if($('importRemoveMissing').checked){
+    const toRemove = products.filter(p=> p.barcode && !seenInFile.has(p.barcode));
+    if(toRemove.length){
+      let rBatch = writeBatch(db), rOps = 0;
+      for(const p of toRemove){
+        rBatch.delete(doc(db,'stores',storeCode,'products',p.id));
+        rOps++; removed++;
+        if(rOps>=400){ commits.push(rBatch.commit()); rBatch = writeBatch(db); rOps=0; }
+      }
+      if(rOps>0) commits.push(rBatch.commit());
+    }
+  }
+
   try{
     await Promise.all(commits);
     closeModal('overlayImport');
     const dupNote = fileDupes ? ` — ${fileDupes} row(s) shared a barcode with another row in the file; the last one won` : '';
-    toast(`Imported: ${added} added, ${updated} updated${skipped?`, ${skipped} skipped`:''}${dupNote}`, fileDupes?'warn':undefined);
+    const removeNote = removed ? `, ${removed} removed` : '';
+    toast(`Imported: ${added} added, ${updated} updated${skipped?`, ${skipped} skipped`:''}${removeNote}${dupNote}`, fileDupes?'warn':undefined);
   }catch(e){ toast('Import failed: '+e.message, 'err'); }
 });
 
@@ -1941,7 +2150,7 @@ $('btnDoPrint').addEventListener('click', ()=>{
     const batchId = activePreviewBatchId;
     activePreviewBatchId = null;
     updateDoc(doc(db,'stores',storeCode,'batches',batchId), {
-      printed: true, printedAt: Date.now(), printedByEmail: currentUser.email,
+      printed: true, printedAt: Date.now(), printedByEmail: currentUser.email||null, printedByName: actorLabel(),
     }).catch(()=>{ /* printing itself still succeeded; don't block on this */ });
   }
 });
