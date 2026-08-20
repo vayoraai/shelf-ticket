@@ -150,8 +150,8 @@ tbody tr.flash{animation:flashRow .9s;}
 .switch input:checked + .slider{background:var(--green-600);}
 .switch input:checked + .slider:before{transform:translateX(16px);}
 
-#cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;min-height:280px;}
-#cameraWrap video, #cameraWrap canvas{width:100%!important;height:auto!important;display:block;}
+#cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;height:min(46vh,360px);min-height:200px;}
+#cameraWrap video, #cameraWrap canvas{width:100%!important;height:100%!important;object-fit:cover;display:block;position:absolute;top:0;left:0;}
 .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:78%;height:34%;border:2px solid var(--amber);border-radius:8px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
 .cam-status{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:10px;}
 .note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
