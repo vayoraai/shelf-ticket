@@ -626,7 +626,7 @@ import {
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
   getDoc, getDocs, onSnapshot, writeBatch, enableIndexedDbPersistence,
-  query, where, arrayUnion, arrayRemove
+  query, where, arrayUnion, arrayRemove, increment
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -1187,27 +1187,33 @@ function typeConfig(type){
   return {cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag'};
 }
 function isPromoType(type){ return type==='a5' || type==='a4' || type==='a7'; }
+// Deterministic doc ID per (barcode, bay, type) — this is what actually
+// fixes duplicate rows from fast repeated scans. Instead of reading the
+// local queue array (which can be a moment stale right after a write) to
+// decide "does this exist yet?", every scan of the same item always targets
+// the exact same document. Firestore's increment() is atomic server-side,
+// so even several scans landing within milliseconds of each other still add
+// up correctly instead of racing into separate rows.
+function queueDocId(barcode, bay, type){
+  const key = `${barcode}__${(bay||'').trim().toLowerCase()}__${type||'shelf'}`;
+  return encodeURIComponent(key).slice(0, 400);
+}
 async function addToQueue(product, qty, bay, type){
   qty = Math.max(1, qty||1);
   bay = (bay||'').trim();
   type = type || 'shelf';
-  const existing = queue.find(q=>q.barcode===product.barcode && (q.bay||'')===bay && (q.type||'shelf')===type);
+  const ref = doc(db,'stores',storeCode,'queue', queueDocId(product.barcode, bay, type));
   try{
-    if(existing){
-      await updateDoc(doc(db,'stores',storeCode,'queue',existing.id), {
-        copies: (existing.copies||0)+qty,
-        lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
-      });
-    } else {
-      await addDoc(collection(db,'stores',storeCode,'queue'), {
-        barcode: product.barcode, name: product.name, price: product.price||0,
-        mrp: product.mrp||null, qty: product.qty||'', unit: product.unit||'',
-        category: product.category||'', expiry: product.expiry||'', bay, copies: qty,
-        type, promoLabel: '', saleStart: '', saleEnd: '',
-        addedByEmail: currentUser.email, addedAt: Date.now(),
-        lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
-      });
-    }
+    // promoLabel/saleStart/saleEnd are deliberately left out here so a
+    // rescan never overwrites edits made by hand in the Print Queue table.
+    await setDoc(ref, {
+      barcode: product.barcode, name: product.name, price: product.price||0,
+      mrp: product.mrp||null, qty: product.qty||'', unit: product.unit||'',
+      category: product.category||'', expiry: product.expiry||'', bay, type,
+      copies: increment(qty),
+      addedByEmail: currentUser.email, addedAt: Date.now(),
+      lastAddedByEmail: currentUser.email, lastAddedAt: Date.now(),
+    }, { merge: true });
   }catch(e){ toast('Could not add to queue: '+e.message, 'err'); }
 }
 
