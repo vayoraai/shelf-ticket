@@ -212,7 +212,7 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA5 .t-sale-dates{font-size:11.5px;}
 .type-promoA4 .t-sale-dates{font-size:15px;}
 
-/* Promo A7 — 8 per A4 (2 cols x 4 rows), landscape cells */
+/* Promo A7 — 8 per A4 (4 cols x 2 rows), true A7 portrait cards on a landscape page */
 .ticket-grid.type-promoA7{gap:2.5mm;}
 .type-promoA7 .ticket{
   border-style:solid;border-width:1.2px;border-color:#d8d2c4;border-radius:2.5mm;
@@ -237,6 +237,9 @@ tbody tr.flash{animation:flashRow .9s;}
   .page-frame:last-child{page-break-after:auto;}
   .page{box-shadow:none;}
   @page{size:A4;margin:0;}
+  @page a7landscape{size:A4 landscape;margin:0;}
+  .page-frame.pf-landscape{page:a7landscape;}
+  .page-frame.pf-landscape .page{width:297mm;height:210mm;}
 }
 @media (max-width:720px){ .row2,.row3{grid-template-columns:1fr;} .brand p{display:none;} }
 
@@ -370,7 +373,7 @@ tbody tr.flash{animation:flashRow .9s;}
 
   <div class="topbar">
     <div class="brand">
-      <div class="mark">₹</div>
+      <div class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L22 12L12 22L2 12L12 2Z" fill="#fff"/><circle cx="12" cy="8.2" r="2" fill="var(--green-700)"/></svg></div>
       <div><h1>Vayora Tickets</h1><p>Price tags &amp; barcode labels, synced across devices</p></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -678,7 +681,7 @@ tbody tr.flash{animation:flashRow .9s;}
       <div class="toggle-row"><span>Show best before / expiry</span><label class="switch"><input type="checkbox" id="optExpiry"><span class="slider"></span></label></div>
       <div class="toggle-row"><span>Beep on scan (success + not-found sounds)</span><label class="switch"><input type="checkbox" id="optBeep" checked><span class="slider"></span></label></div>
       <div class="row2" style="margin-top:16px;">
-        <div class="field"><label>Currency symbol</label><input id="optCurrency" value="₹"></div>
+        <div class="field"><label>Currency symbol</label><input id="optCurrency" value="$"></div>
         <div class="field"><label>Shelf tag paper</label>
           <select id="optPaperPreset">
             <option value="plain">Plain A4 (auto-fit any cols × rows)</option>
@@ -788,7 +791,7 @@ let unsubProducts = null, unsubQueue = null, unsubBatches = null;
 let products = [];
 let queue = [];
 let batches = [];
-let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:false, currency:'₹', cols:3, rows:8, beepOnScan:true,
+let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:false, currency:'$', cols:3, rows:8, beepOnScan:true,
   paperPreset:'plain', ticketW:60, ticketH:34, marginTop:10, marginLeft:10, gapX:2.5, gapY:2.5, offsetX:0, offsetY:0 };
 
 // Best-effort starting values from each supplier's published listing.
@@ -1556,7 +1559,7 @@ $('searchBox').addEventListener('input', renderTable);
 
 /* ===================== Print queue ===================== */
 function typeConfig(type){
-  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo', fixed:false};
+  if(type==='a7') return {cols:4, rows:2, cls:'type-promoA7', label:'A7 promo', fixed:false, landscape:true};
   if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false};
   if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo', fixed:false};
   if(settings.paperPreset && settings.paperPreset!=='plain'){
@@ -2384,7 +2387,8 @@ function buildPagesHtml(list){
         const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
         html += `<div class="page-frame"><div class="page" style="${pageStyle}"><div class="ticket-grid ${cfg.cls}" style="${gridStyle}">${cells}${fillerHtml}</div></div></div>`;
       } else {
-        html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
+        const frameClass = cfg.landscape ? 'page-frame pf-landscape' : 'page-frame';
+        html += `<div class="${frameClass}"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
       }
     }
   });
