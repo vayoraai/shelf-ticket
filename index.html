@@ -571,6 +571,10 @@ tbody tr.flash{animation:flashRow .9s;}
     <div class="modal-body">
       <div id="cameraWrap"><div class="scan-frame"></div></div>
       <div class="cam-status" id="camStatus">Point your camera at a barcode…</div>
+      <button class="btn primary" id="btnScanNext" style="display:none;width:100%;justify-content:center;margin-top:10px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Tap to scan next item
+      </button>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="btnCloseCamera2">Done</button></div>
   </div>
@@ -1560,6 +1564,7 @@ $('btnConfirmImport').addEventListener('click', async ()=>{
 
 /* ===================== USB / Bluetooth scanner ===================== */
 $('btnScanToggle').addEventListener('click', ()=>{
+  getAudioCtx(); // unlock audio now, on a real tap — iOS blocks sound triggered later from background code
   $('scanBar').classList.toggle('active');
   if($('scanBar').classList.contains('active')){ $('scanInput').focus(); }
 });
@@ -1652,6 +1657,8 @@ function isValidGtinChecksum(code){
 
 let quaggaRunning = false;
 $('btnCamera').addEventListener('click', ()=>{
+  getAudioCtx(); // unlock audio now, on the actual tap
+  $('btnScanNext').style.display = 'none';
   openModal('overlayCamera');
   $('camStatus').textContent = 'Starting camera…';
   Quagga.init({
@@ -1695,11 +1702,31 @@ $('btnCamera').addEventListener('click', ()=>{
       return;
     }
     lastCode = code; lastTime = now; candidateCode=''; candidateCount=0;
+
+    // Pause here, every time — this is what puts you back in control of
+    // exactly how many copies get added. The camera stops the instant one
+    // clean scan is confirmed, instead of continuing to re-detect the same
+    // barcode over and over while it's still sitting in frame.
+    if(quaggaRunning){ Quagga.stop(); quaggaRunning = false; }
     $('camStatus').textContent = `Detected: ${code}`;
     handleScan(code);
+    // If the camera modal is still open, the item was found and added —
+    // offer an explicit button to continue rather than resuming on its own.
+    if($('overlayCamera').classList.contains('show')){
+      $('btnScanNext').style.display = '';
+    }
   });
 });
-function closeCameraFn(){ closeModal('overlayCamera'); if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; } }
+$('btnScanNext').addEventListener('click', ()=>{
+  $('btnScanNext').style.display = 'none';
+  $('camStatus').textContent = 'Point your camera at a barcode…';
+  if(!quaggaRunning){ Quagga.start(); quaggaRunning = true; }
+});
+function closeCameraFn(){
+  closeModal('overlayCamera');
+  $('btnScanNext').style.display = 'none';
+  if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; }
+}
 $('btnCloseCamera').addEventListener('click', closeCameraFn);
 $('btnCloseCamera2').addEventListener('click', closeCameraFn);
 
