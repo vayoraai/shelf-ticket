@@ -212,7 +212,7 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA5 .t-sale-dates{font-size:11.5px;}
 .type-promoA4 .t-sale-dates{font-size:15px;}
 
-/* Promo A7 — 8 per A4 (4 cols x 2 rows), true A7 portrait cards on a landscape page */
+/* Promo A7 — 8 per A4 (2 cols x 4 rows), landscape cells */
 .ticket-grid.type-promoA7{gap:2.5mm;}
 .type-promoA7 .ticket{
   border-style:solid;border-width:1.2px;border-color:#d8d2c4;border-radius:2.5mm;
@@ -427,6 +427,11 @@ tbody tr.flash{animation:flashRow .9s;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Fields
     </button>
+    <button class="btn" id="btnNewFromScan" style="display:none;position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L22 12L12 22L2 12L12 2Z"/></svg>
+      New from scanning
+      <span id="newFromScanBadge" style="background:var(--red);color:#fff;font-size:10.5px;font-weight:700;border-radius:20px;padding:1px 7px;margin-left:4px;">0</span>
+    </button>
     <div class="search" style="min-width:190px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
       <input type="text" id="bayInput" placeholder="Current bay / aisle (optional)">
@@ -440,6 +445,9 @@ tbody tr.flash{animation:flashRow .9s;}
         <option value="a4">Promo — A4 (1/page)</option>
       </select>
     </div>
+    <label id="promptOfferWrap" style="display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;">
+      <input type="checkbox" id="promptOfferToggle"> Ask for offer on each scan
+    </label>
     <div class="spacer"></div>
     <div class="search">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -499,6 +507,8 @@ tbody tr.flash{animation:flashRow .9s;}
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button class="btn ghost" id="btnExportOffersCsv" style="display:none;">Export offers CSV</button>
+      <button class="btn ghost" id="btnExportOffersXlsx" style="display:none;">Export offers Excel</button>
       <button class="btn danger" id="btnClearQueue">Clear queue</button>
       <button class="btn primary" id="btnSaveBatch">Save as batch</button>
     </div>
@@ -649,6 +659,62 @@ tbody tr.flash{animation:flashRow .9s;}
       </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" data-close="overlayAdminCreate">Close</button></div>
+  </div>
+</div>
+
+<!-- ============ Offer prompt (during promo batch scanning) ============ -->
+<div class="overlay" id="overlayOfferPrompt">
+  <div class="modal">
+    <div class="modal-head"><h2>Set an offer</h2><button class="icon-btn" data-close="overlayOfferPrompt">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="offerPromptQueueId">
+      <div class="field"><label>Offer type</label>
+        <select id="offerPromptType">
+          <option value="">No offer badge (just regular price)</option>
+          <option value="percent">% off</option>
+          <option value="special">Special price</option>
+          <option value="bundle">Bundle deal</option>
+          <option value="custom">Custom text</option>
+        </select>
+      </div>
+      <div class="field" id="offerPromptPercentRow" style="display:none;"><label>Percent off</label><input type="number" min="1" max="99" id="offerPromptPercent" placeholder="e.g. 20"></div>
+      <div class="field" id="offerPromptBundleRow" style="display:none;">
+        <label>Bundle deal</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" min="1" id="offerPromptQty" placeholder="Qty e.g. 2" style="flex:1;">
+          <span style="color:var(--ink-soft);">for $</span>
+          <input type="number" step="0.01" min="0" id="offerPromptPrice" placeholder="e.g. 5" style="flex:1;">
+        </div>
+      </div>
+      <div class="field" id="offerPromptSpecialRow" style="display:none;"><label>Special price</label><input type="number" step="0.01" min="0" id="offerPromptPrice2" placeholder="e.g. 2.99"></div>
+      <div class="field" id="offerPromptCustomRow" style="display:none;"><label>Custom text</label><input type="text" id="offerPromptCustom" placeholder="e.g. Buy 1 Get 1 Free"></div>
+    </div>
+    <div class="modal-foot" style="display:flex;gap:8px;">
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnOfferPromptSkip">Skip</button>
+      <button class="btn primary" style="flex:1;justify-content:center;" id="btnOfferPromptSave">Save offer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ New products from scanning ============ -->
+<div class="overlay" id="overlayNewFromScan">
+  <div class="modal">
+    <div class="modal-head"><h2>New products from scanning</h2><button class="icon-btn" data-close="overlayNewFromScan">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">Barcodes that weren't in your catalog yet, added on the fly while scanning. Export this list to feed straight into your POS system, then mark them reviewed so they drop off this list — they stay in your catalog either way.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Barcode</th><th>Price</th><th>Added</th></tr></thead>
+          <tbody id="newFromScanBody"></tbody>
+        </table>
+      </div>
+      <div id="newFromScanEmpty" class="hint" style="display:none;padding:20px 0;text-align:center;">No new products from scanning right now — this list only fills up when a scan hits a barcode that isn't in your catalog yet.</div>
+    </div>
+    <div class="modal-foot" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnMarkScanReviewed">Mark all reviewed</button>
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnExportScanCsv">Export CSV</button>
+      <button class="btn primary" style="flex:1;justify-content:center;" id="btnExportScanXlsx">Export Excel</button>
+    </div>
   </div>
 </div>
 
@@ -1503,6 +1569,10 @@ $('tabBatches').addEventListener('click', ()=>{
 
 /* ===================== Render catalog table ===================== */
 function renderTable(){
+  const scanCount = products.filter(p=>p.newFromScan).length;
+  $('btnNewFromScan').style.display = scanCount ? '' : 'none';
+  $('newFromScanBadge').textContent = scanCount;
+
   const q = $('searchBox').value.trim().toLowerCase();
   const tbody = $('tbody');
   tbody.innerHTML = '';
@@ -1539,11 +1609,12 @@ function renderTable(){
       </td>`;
     tbody.appendChild(tr);
 
-    tr.querySelector('.addQueueBtn').addEventListener('click', ()=>{
+    tr.querySelector('.addQueueBtn').addEventListener('click', async ()=>{
       const qty = Math.max(1, parseInt(tr.querySelector('.addQtyInput').value)||1);
       const type = $('ticketTypeInput').value;
-      addToQueue(p, qty, $('bayInput').value, type);
+      const ref = await addToQueue(p, qty, $('bayInput').value, type);
       toast(`Added ${qty} × ${p.name} to queue`);
+      maybePromptOffer(ref, type);
     });
     tr.querySelector('.editBtn').addEventListener('click', ()=> openEdit(p.id));
     tr.querySelector('.delBtn').addEventListener('click', async ()=>{
@@ -1559,7 +1630,7 @@ $('searchBox').addEventListener('input', renderTable);
 
 /* ===================== Print queue ===================== */
 function typeConfig(type){
-  if(type==='a7') return {cols:4, rows:2, cls:'type-promoA7', label:'A7 promo', fixed:false, landscape:true};
+  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo', fixed:false};
   if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false};
   if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo', fixed:false};
   if(settings.paperPreset && settings.paperPreset!=='plain'){
@@ -1591,7 +1662,7 @@ async function addToQueue(product, qty, bay, type){
   type = type || 'shelf';
   const ref = doc(db,'stores',storeCode,'queue', queueDocId(product.barcode, bay, type));
   try{
-    // promoLabel/saleStart/saleEnd are deliberately left out here so a
+    // promoLabel/saleStart/saleEnd/offer* are deliberately left out here so a
     // rescan never overwrites edits made by hand in the Print Queue table.
     await setDoc(ref, {
       barcode: product.barcode, name: product.name, price: product.price||0,
@@ -1601,10 +1672,52 @@ async function addToQueue(product, qty, bay, type){
       addedByEmail: currentUser.email||null, addedByName: actorLabel(), addedAt: Date.now(),
       lastAddedByEmail: currentUser.email||null, lastAddedByName: actorLabel(), lastAddedAt: Date.now(),
     }, { merge: true });
-  }catch(e){ toast('Could not add to queue: '+e.message, 'err'); }
+    return ref;
+  }catch(e){ toast('Could not add to queue: '+e.message, 'err'); return null; }
 }
 
+/* ===================== Offer prompt (promo batch scanning) ===================== */
+$('ticketTypeInput').addEventListener('change', ()=>{
+  $('promptOfferWrap').style.display = $('ticketTypeInput').value==='shelf' ? 'none' : 'flex';
+});
+function maybePromptOffer(ref, type){
+  if(!ref || type==='shelf' || !$('promptOfferToggle').checked) return;
+  openOfferPrompt(ref.id);
+}
+function openOfferPrompt(queueId){
+  $('offerPromptQueueId').value = queueId;
+  $('offerPromptType').value = '';
+  ['offerPromptPercentRow','offerPromptBundleRow','offerPromptSpecialRow','offerPromptCustomRow'].forEach(id=>$(id).style.display='none');
+  $('offerPromptPercent').value=''; $('offerPromptQty').value=''; $('offerPromptPrice').value=''; $('offerPromptPrice2').value=''; $('offerPromptCustom').value='';
+  openModal('overlayOfferPrompt');
+}
+$('offerPromptType').addEventListener('change', e=>{
+  const val = e.target.value;
+  $('offerPromptPercentRow').style.display = val==='percent' ? 'block' : 'none';
+  $('offerPromptBundleRow').style.display = val==='bundle' ? 'block' : 'none';
+  $('offerPromptSpecialRow').style.display = val==='special' ? 'block' : 'none';
+  $('offerPromptCustomRow').style.display = val==='custom' ? 'block' : 'none';
+});
+$('btnOfferPromptSave').addEventListener('click', async ()=>{
+  const queueId = $('offerPromptQueueId').value;
+  const type = $('offerPromptType').value;
+  const data = { offerType: type };
+  if(type==='percent') data.offerPercent = Math.max(1, Math.min(99, parseInt($('offerPromptPercent').value)||0));
+  if(type==='bundle'){ data.offerQty = Math.max(1, parseInt($('offerPromptQty').value)||0); data.offerPrice = Math.max(0, parseFloat($('offerPromptPrice').value)||0); }
+  if(type==='special') data.offerPrice = Math.max(0, parseFloat($('offerPromptPrice2').value)||0);
+  if(type==='custom') data.offerCustomText = $('offerPromptCustom').value.trim();
+  try{
+    if(queueId) await updateDoc(doc(db,'stores',storeCode,'queue',queueId), data);
+    closeModal('overlayOfferPrompt');
+  }catch(e){ toast('Could not save offer: '+e.message, 'err'); }
+});
+$('btnOfferPromptSkip').addEventListener('click', ()=> closeModal('overlayOfferPrompt'));
+
 function renderQueue(){
+  const promoCount = queue.filter(e=>(e.type||'shelf')!=='shelf').length;
+  $('btnExportOffersCsv').style.display = promoCount ? '' : 'none';
+  $('btnExportOffersXlsx').style.display = promoCount ? '' : 'none';
+
   const tbody = $('queueBody');
   tbody.innerHTML = '';
   const sorted = [...queue].sort((a,b)=> (a.bay||'').localeCompare(b.bay||'') || a.name.localeCompare(b.name));
@@ -1635,6 +1748,26 @@ function renderQueue(){
             <input type="date" class="bay-edit-input saleStartEdit" style="width:50%;padding:5px 6px;" value="${entry.saleStart||''}" ${promoDisabled}>
             <input type="date" class="bay-edit-input saleEndEdit" style="width:50%;padding:5px 6px;" value="${entry.saleEnd||''}" ${promoDisabled}>
           </div>
+          <select class="bay-edit-input offerTypeEdit" ${promoDisabled}>
+            <option value="">No offer badge (or auto % from MRP)</option>
+            <option value="percent" ${entry.offerType==='percent'?'selected':''}>% off</option>
+            <option value="special" ${entry.offerType==='special'?'selected':''}>Special price</option>
+            <option value="bundle" ${entry.offerType==='bundle'?'selected':''}>Bundle deal</option>
+            <option value="custom" ${entry.offerType==='custom'?'selected':''}>Custom text</option>
+          </select>
+          <div class="offerFieldsPercent" style="display:${entry.offerType==='percent'?'flex':'none'};">
+            <input type="number" min="1" max="99" class="bay-edit-input offerPercentEdit" style="width:100%;" placeholder="e.g. 20" value="${entry.offerPercent||''}">
+          </div>
+          <div class="offerFieldsBundle" style="display:${entry.offerType==='bundle'?'flex':'none'};gap:4px;">
+            <input type="number" min="1" class="bay-edit-input offerQtyEdit" style="width:50%;" placeholder="Qty e.g. 2" value="${entry.offerQty||''}">
+            <input type="number" step="0.01" min="0" class="bay-edit-input offerPriceEdit" style="width:50%;" placeholder="Price e.g. 5" value="${entry.offerType==='bundle' && entry.offerPrice!=null?entry.offerPrice:''}">
+          </div>
+          <div class="offerFieldsSpecial" style="display:${entry.offerType==='special'?'flex':'none'};">
+            <input type="number" step="0.01" min="0" class="bay-edit-input offerPriceOnlyEdit" style="width:100%;" placeholder="e.g. 2.99" value="${entry.offerType==='special' && entry.offerPrice!=null?entry.offerPrice:''}">
+          </div>
+          <div class="offerFieldsCustom" style="display:${entry.offerType==='custom'?'flex':'none'};">
+            <input type="text" class="bay-edit-input offerCustomEdit" style="width:100%;" placeholder="e.g. Buy 1 Get 1 Free" value="${escapeHtml(entry.offerCustomText||'')}">
+          </div>
         </div>
       </td>
       <td class="cell-barcode">${escapeHtml(entry.barcode||'')}</td>
@@ -1660,6 +1793,33 @@ function renderQueue(){
     });
     tr.querySelector('.saleEndEdit').addEventListener('change', async e=>{
       try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { saleEnd: e.target.value }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerTypeEdit').addEventListener('change', async e=>{
+      const val = e.target.value;
+      tr.querySelector('.offerFieldsPercent').style.display = val==='percent' ? 'flex' : 'none';
+      tr.querySelector('.offerFieldsBundle').style.display = val==='bundle' ? 'flex' : 'none';
+      tr.querySelector('.offerFieldsSpecial').style.display = val==='special' ? 'flex' : 'none';
+      tr.querySelector('.offerFieldsCustom').style.display = val==='custom' ? 'flex' : 'none';
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerType: val }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerPercentEdit').addEventListener('change', async e=>{
+      const v = Math.max(1, Math.min(99, parseInt(e.target.value)||0));
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerPercent: v }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerQtyEdit').addEventListener('change', async e=>{
+      const v = Math.max(1, parseInt(e.target.value)||0);
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerQty: v }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerPriceEdit').addEventListener('change', async e=>{
+      const v = Math.max(0, parseFloat(e.target.value)||0);
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerPrice: v }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerPriceOnlyEdit').addEventListener('change', async e=>{
+      const v = Math.max(0, parseFloat(e.target.value)||0);
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerPrice: v }); }catch(err){ toast('Update failed','err'); }
+    });
+    tr.querySelector('.offerCustomEdit').addEventListener('change', async e=>{
+      try{ await updateDoc(doc(db,'stores',storeCode,'queue',entry.id), { offerCustomText: e.target.value.trim() }); }catch(err){ toast('Update failed','err'); }
     });
     tr.querySelector('.copiesEdit').addEventListener('change', async e=>{
       const v = Math.max(0, parseInt(e.target.value)||0);
@@ -1802,10 +1962,15 @@ async function previewBatch(b){
 
 /* ===================== Add / Edit product ===================== */
 function resetForm(){ ['fId','fName','fBarcode','fPrice','fMrp','fQty','fUnit','fCategory','fExpiry'].forEach(id=>$(id).value=''); }
-$('btnAdd').addEventListener('click', ()=>{ resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
-$('btnAdd2').addEventListener('click', ()=>{ resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
+// Distinguishes "opened the Add form because an unrecognized barcode was
+// scanned" from a normal manual add — set true only in handleScan's
+// not-found branch, read once at save time, then always reset.
+let pendingScanAdd = false;
+$('btnAdd').addEventListener('click', ()=>{ pendingScanAdd=false; resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
+$('btnAdd2').addEventListener('click', ()=>{ pendingScanAdd=false; resetForm(); $('formTitle').textContent='Add product'; openModal('overlayForm'); });
 
 function openEdit(id){
+  pendingScanAdd = false;
   const p = products.find(x=>x.id===id);
   if(!p) return;
   $('fId').value = p.id; $('fName').value = p.name||''; $('fBarcode').value = p.barcode||'';
@@ -1845,10 +2010,15 @@ $('btnSaveProduct').addEventListener('click', async ()=>{
     } else {
       const existing = products.find(x=>x.barcode===barcode);
       if(existing){ await updateDoc(doc(db,'stores',storeCode,'products',existing.id), data); toast('Existing barcode — product updated'); }
-      else { await addDoc(collection(db,'stores',storeCode,'products'), data); toast('Product added'); }
+      else {
+        if(pendingScanAdd){ data.newFromScan = true; data.newFromScanAt = Date.now(); }
+        await addDoc(collection(db,'stores',storeCode,'products'), data);
+        toast('Product added');
+      }
     }
     closeModal('overlayForm');
   }catch(e){ toast('Save failed: '+e.message, 'err'); }
+  finally{ pendingScanAdd = false; }
 });
 
 /* ===================== Import (Excel / CSV) ===================== */
@@ -2024,15 +2194,16 @@ function playErrorBeep(){
   setTimeout(()=> playTone(220, 0.2, 'square'), 140);
 }
 
-function handleScan(code){
+async function handleScan(code){
   const p = products.find(x=>x.barcode===code);
   const bay = $('bayInput').value.trim();
   const type = $('ticketTypeInput').value;
   if(p){
     playSuccessBeep();
-    addToQueue(p, 1, bay, type);
+    const ref = await addToQueue(p, 1, bay, type);
     toast(`Added to queue — ${p.name}${bay?` (${bay})`:''}`);
     $('tabQueue').click();
+    maybePromptOffer(ref, type);
   } else {
     playErrorBeep();
     // Stop the camera first — otherwise it keeps re-detecting this same
@@ -2041,6 +2212,7 @@ function handleScan(code){
     closeCameraFn();
     toast(`Barcode ${code} not found`, 'warn');
     if(confirm(`Barcode "${code}" isn't in this store's catalog yet.\nAdd it as a new product now?`)){
+      pendingScanAdd = true;
       resetForm(); $('fBarcode').value = code; $('formTitle').textContent = 'Add product'; openModal('overlayForm');
     }
   }
@@ -2272,6 +2444,100 @@ $('btnPrintAlignTest').addEventListener('click', ()=>{
   window.print();
   settings = prevSettings;
 });
+/* ===================== Promo offers export (current print queue) ===================== */
+const typeLabels = {shelf:'Shelf tag', a7:'Promo A7', a5:'Promo A5', a4:'Promo A4'};
+function offersReportRows(){
+  return queue.filter(e=>(e.type||'shelf')!=='shelf').map(e=>({
+    Barcode: e.barcode||'', Name: e.name||'', 'Ticket Type': typeLabels[e.type]||e.type,
+    Price: e.price??'', MRP: e.mrp??'',
+    'Offer Type': e.offerType||'', 'Offer Text': computeOfferText(e)||'',
+    'Promo Label': e.promoLabel||'', 'Valid From': e.saleStart||'', 'Valid To': e.saleEnd||'',
+    Bay: e.bay||'', Copies: e.copies||0,
+  }));
+}
+$('btnExportOffersCsv').addEventListener('click', ()=>{
+  const rows = offersReportRows();
+  if(!rows.length){ toast('No promo tickets in the queue', 'err'); return; }
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `promo-offers-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} promo ticket${rows.length>1?'s':''}`);
+});
+$('btnExportOffersXlsx').addEventListener('click', ()=>{
+  const rows = offersReportRows();
+  if(!rows.length){ toast('No promo tickets in the queue', 'err'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Promo Offers');
+  XLSX.writeFile(wb, `promo-offers-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`Exported ${rows.length} promo ticket${rows.length>1?'s':''}`);
+});
+
+/* ===================== New products from scanning ===================== */
+function renderNewFromScanModal(){
+  const items = products.filter(p=>p.newFromScan).sort((a,b)=>(b.newFromScanAt||0)-(a.newFromScanAt||0));
+  const body = $('newFromScanBody');
+  body.innerHTML = '';
+  $('newFromScanEmpty').style.display = items.length ? 'none' : 'block';
+  items.forEach(p=>{
+    const tr = document.createElement('tr');
+    const when = p.newFromScanAt ? new Date(p.newFromScanAt).toLocaleString() : '';
+    tr.innerHTML = `<td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.barcode||'')}</td><td>${settings.currency}${(p.price??0).toFixed(2)}</td><td>${when}</td>`;
+    body.appendChild(tr);
+  });
+}
+$('btnNewFromScan').addEventListener('click', ()=>{ renderNewFromScanModal(); openModal('overlayNewFromScan'); });
+function scanReportRows(){
+  const items = products.filter(p=>p.newFromScan).sort((a,b)=>(b.newFromScanAt||0)-(a.newFromScanAt||0));
+  return items.map(p=>({
+    Barcode: p.barcode||'', Name: p.name||'', Price: p.price??'', MRP: p.mrp??'',
+    Qty: p.qty||'', Unit: p.unit||'', Category: p.category||'',
+  }));
+}
+$('btnExportScanCsv').addEventListener('click', ()=>{
+  const rows = scanReportRows();
+  if(!rows.length){ toast('Nothing to export', 'err'); return; }
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `new-products-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} product${rows.length>1?'s':''}`);
+});
+$('btnExportScanXlsx').addEventListener('click', ()=>{
+  const rows = scanReportRows();
+  if(!rows.length){ toast('Nothing to export', 'err'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'New Products');
+  XLSX.writeFile(wb, `new-products-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`Exported ${rows.length} product${rows.length>1?'s':''}`);
+});
+$('btnMarkScanReviewed').addEventListener('click', async ()=>{
+  const items = products.filter(p=>p.newFromScan);
+  if(!items.length){ toast('Nothing to mark', 'err'); return; }
+  if(!confirm(`Mark ${items.length} product${items.length>1?'s':''} as reviewed? They'll stay in your catalog, just drop off this list.`)) return;
+  try{
+    let batch = writeBatch(db), ops = 0;
+    const commits = [];
+    for(const p of items){
+      batch.update(doc(db,'stores',storeCode,'products',p.id), { newFromScan:false });
+      ops++;
+      if(ops>=400){ commits.push(batch.commit()); batch = writeBatch(db); ops=0; }
+    }
+    if(ops>0) commits.push(batch.commit());
+    await Promise.all(commits);
+    closeModal('overlayNewFromScan');
+    toast('Marked as reviewed');
+  }catch(e){ toast('Could not update: '+e.message, 'err'); }
+});
+
 $('btnSettings').addEventListener('click', ()=>{
   $('optMrp').checked = settings.mrp; $('optUnit').checked = settings.unit;
   $('optCategory').checked = settings.category; $('optBay').checked = settings.showBay;
@@ -2348,15 +2614,28 @@ function saleDatesHtml(p){
   else text = `Until ${e}`;
   return `<div class="t-sale-dates">${escapeHtml(text)}</div>`;
 }
+// Turns structured offer fields into the short badge text printed on the
+// ticket — e.g. "20% OFF", "2 FOR $5", "NOW $2.99". Falls back to null
+// (letting the existing auto MRP-vs-price % badge show instead) when no
+// manual offer is set.
+function computeOfferText(p){
+  const type = p.offerType || '';
+  if(type==='percent' && p.offerPercent) return `${p.offerPercent}% OFF`;
+  if(type==='bundle' && p.offerQty && p.offerPrice!=null) return `${p.offerQty} FOR ${settings.currency}${Number(p.offerPrice).toFixed(2)}`;
+  if(type==='special' && p.offerPrice!=null) return `NOW ${settings.currency}${Number(p.offerPrice).toFixed(2)}`;
+  if(type==='custom' && p.offerCustomText) return p.offerCustomText;
+  return null;
+}
 function promoTicketHtml(p, type){
-  const discount = (settings.mrp && p.onPromotion && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
+  const autoDiscount = (settings.mrp && p.onPromotion && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
+  const manualOffer = computeOfferText(p);
   const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
   const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
   const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : '';
   const mrpHtml = settings.mrp && p.onPromotion && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
   const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
   const labelHtml = p.promoLabel ? `<div class="t-promo-label">${escapeHtml(p.promoLabel)}</div>` : '';
-  const discountHtml = discount ? `<div class="t-discount">${discount}% OFF</div>` : '';
+  const discountHtml = manualOffer ? `<div class="t-discount">${escapeHtml(manualOffer)}</div>` : (autoDiscount ? `<div class="t-discount">${autoDiscount}% OFF</div>` : '');
   const svgId = 'bc_'+Math.random().toString(36).slice(2,10);
   return `<div class="ticket promo-ticket">
     ${labelHtml}${discountHtml}
