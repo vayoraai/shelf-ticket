@@ -150,14 +150,15 @@ tbody tr.flash{animation:flashRow .9s;}
 .switch input:checked + .slider{background:var(--green-600);}
 .switch input:checked + .slider:before{transform:translateX(16px);}
 
-#cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;height:min(46vh,360px);min-height:200px;}
+#cameraWrap{position:relative;background:#111;border-radius:10px;overflow:hidden;height:min(24vh,190px);min-height:130px;}
 #cameraWrap video, #cameraWrap canvas{width:100%!important;height:100%!important;object-fit:cover;display:block;position:absolute;top:0;left:0;}
 .scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:78%;height:34%;border:2px solid var(--amber);border-radius:8px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
 .cam-status{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:10px;}
 .note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
 
 #printArea{display:none;}
-.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto 24px;padding:10mm;box-shadow:var(--shadow);}
+.page-frame{margin:0 auto 24px;}
+.page{background:#fff;width:210mm;min-height:297mm;padding:10mm;box-shadow:var(--shadow);}
 .ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),1fr);grid-template-rows:repeat(var(--rows,8),1fr);gap:2.5mm;}
 .ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;}
 .t-top .t-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;line-height:1.15;color:#1a1a1a;}
@@ -229,8 +230,9 @@ tbody tr.flash{animation:flashRow .9s;}
   body *{visibility:hidden;}
   #printArea, #printArea *{visibility:visible;}
   #printArea{display:block;position:absolute;top:0;left:0;margin:0;}
-  .page{box-shadow:none;margin:0;page-break-after:always;}
-  .page:last-child{page-break-after:auto;}
+  .page-frame{margin:0;page-break-after:always;}
+  .page-frame:last-child{page-break-after:auto;}
+  .page{box-shadow:none;}
   @page{size:A4;margin:0;}
 }
 @media (max-width:720px){ .row2,.row3{grid-template-columns:1fr;} .brand p{display:none;} }
@@ -1407,6 +1409,7 @@ async function previewBatch(b){
     $('previewInner').innerHTML = buildPagesHtml(list);
     renderBarcodes($('previewInner'));
     openModal('overlayPreview');
+    requestAnimationFrame(scalePreviewPages);
   }catch(e){ toast('Could not load batch: '+e.message, 'err'); }
 }
 
@@ -1840,7 +1843,7 @@ function buildPagesHtml(list){
       const cells = chunk.map(ticketHtml).join('');
       const filler = perPage - chunk.length;
       const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
-      html += `<div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div>`;
+      html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
     }
   });
   return html;
@@ -1853,6 +1856,32 @@ function renderBarcodes(root){
     catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:true, fontSize:9, height:26, margin:0, width:1.1 }); }catch(e2){} }
   });
 }
+// The ticket page is built at true A4 size (210mm ≈ 794px) so print output is
+// accurate — but that's roughly double a phone's screen width. This scales
+// it down visually to fit whatever screen is showing the preview, purely
+// for on-screen viewing; the actual print (#printArea) is never scaled.
+function scalePreviewPages(){
+  const container = $('previewInner');
+  const availableWidth = container.clientWidth;
+  if(!availableWidth) return;
+  container.querySelectorAll('.page-frame').forEach(frame=>{
+    const pageEl = frame.querySelector('.page');
+    if(!pageEl) return;
+    pageEl.style.transform = 'none';
+    const naturalWidth = pageEl.offsetWidth;
+    const naturalHeight = pageEl.offsetHeight;
+    const scale = Math.min(1, (availableWidth - 4) / naturalWidth);
+    pageEl.style.transformOrigin = 'top left';
+    pageEl.style.transform = `scale(${scale})`;
+    frame.style.width = Math.ceil(naturalWidth*scale) + 'px';
+    frame.style.height = Math.ceil(naturalHeight*scale) + 'px';
+    frame.style.overflow = 'hidden';
+  });
+}
+window.addEventListener('resize', ()=>{
+  if($('overlayPreview').classList.contains('show')) scalePreviewPages();
+});
+
 let currentPreviewList = [];
 $('btnPreview').addEventListener('click', ()=>{
   const list = buildTicketList();
@@ -1864,20 +1893,25 @@ $('btnPreview').addEventListener('click', ()=>{
   $('previewInner').innerHTML = buildPagesHtml(list);
   renderBarcodes($('previewInner'));
   openModal('overlayPreview');
+  // Sizes are only knowable once the modal is actually laid out on screen,
+  // so scale on the next frame rather than immediately.
+  requestAnimationFrame(scalePreviewPages);
 });
-$('btnDoPrint').addEventListener('click', async ()=>{
+$('btnDoPrint').addEventListener('click', ()=>{
   const list = currentPreviewList.length ? currentPreviewList : buildTicketList();
   if(!list.length){ toast('Nothing to print', 'err'); return; }
   $('printArea').innerHTML = buildPagesHtml(list);
   renderBarcodes($('printArea'));
-  setTimeout(()=> window.print(), 80);
+  // Must run synchronously, in the same tap — iOS Safari silently ignores
+  // window.print() if it's deferred (even by a few ms via setTimeout),
+  // since it no longer counts as a direct response to your tap.
+  window.print();
   if(activePreviewBatchId){
-    try{
-      await updateDoc(doc(db,'stores',storeCode,'batches',activePreviewBatchId), {
-        printed: true, printedAt: Date.now(), printedByEmail: currentUser.email,
-      });
-    }catch(e){ /* printing itself still succeeded; don't block on this */ }
+    const batchId = activePreviewBatchId;
     activePreviewBatchId = null;
+    updateDoc(doc(db,'stores',storeCode,'batches',batchId), {
+      printed: true, printedAt: Date.now(), printedByEmail: currentUser.email,
+    }).catch(()=>{ /* printing itself still succeeded; don't block on this */ });
   }
 });
 
