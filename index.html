@@ -158,7 +158,7 @@ tbody tr.flash{animation:flashRow .9s;}
 
 #printArea{display:none;}
 .page-frame{margin:0 auto 24px;}
-.page{background:#fff;width:210mm;height:297mm;padding:10mm;box-shadow:var(--shadow);}
+.page{background:#fff;width:210mm;height:297mm;padding:10mm;box-shadow:var(--shadow);position:relative;box-sizing:border-box;}
 .ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),1fr);grid-template-rows:repeat(var(--rows,8),1fr);gap:2.5mm;}
 .ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;}
 .t-top .t-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;line-height:1.15;color:#1a1a1a;}
@@ -375,6 +375,7 @@ tbody tr.flash{animation:flashRow .9s;}
     <b id="activeStoreName" style="color:#fff;font-size:13.5px;"></b>
     <span class="code-pill" id="storeCodePill" title="Click to copy invite code">Code: —</span>
     <span id="adminViewBadge" style="display:none;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:20px;">ADMIN VIEW</span>
+    <button class="btn" id="btnAdminCreate" style="display:none;">+ Create store account</button>
     <div class="spacer"></div>
     <div class="staff-tag" id="staffTag" style="display:none;">
       Scanning as <b id="staffTagName"></b>
@@ -606,6 +607,38 @@ tbody tr.flash{animation:flashRow .9s;}
   </div>
 </div>
 
+<!-- ============ Admin: create store account ============ -->
+<div class="overlay" id="overlayAdminCreate">
+  <div class="modal">
+    <div class="modal-head"><h2>Create store account</h2><button class="icon-btn" data-close="overlayAdminCreate">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">Creates the owner login and, optionally, the store itself — in one step. Nothing here is reachable from the public sign-in page; only you can see this button.</p>
+      <div class="gate-err" id="adminCreateErr"></div>
+
+      <div id="adminCreateForm">
+        <div class="field"><label>Owner's email</label><input id="acEmail" type="email" placeholder="owner@theirstore.com"></div>
+        <div class="field"><label>Password</label>
+          <div style="display:flex;gap:8px;">
+            <input id="acPassword" type="text" placeholder="At least 6 characters" style="flex:1;">
+            <button class="btn ghost" id="btnGenPassword" type="button">Generate</button>
+          </div>
+        </div>
+        <div class="field"><label>Store name (optional — leave blank to only create the login)</label><input id="acStoreName" placeholder="e.g. Riya's Grocery, Epping"></div>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px;" id="btnAdminCreateSubmit">Create</button>
+      </div>
+
+      <div id="adminCreateResult" style="display:none;">
+        <div class="callout-ok" style="background:#eafaf1;border:1px solid #b7e6cb;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1b6b41;">Account created. Copy these details to the store owner — this password isn't shown again.</div>
+        <div class="field"><label>Email</label><input id="acResultEmail" readonly style="width:100%;"></div>
+        <div class="field"><label>Password</label><input id="acResultPassword" readonly style="width:100%;"></div>
+        <div class="field" id="acResultCodeField" style="display:none;"><label>Store code</label><input id="acResultCode" readonly style="width:100%;"></div>
+        <button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px;" id="btnAdminCreateAnother">Create another</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" data-close="overlayAdminCreate">Close</button></div>
+  </div>
+</div>
+
 <!-- ============ Camera scan modal ============ -->
 <div class="overlay" id="overlayCamera">
   <div class="modal">
@@ -636,13 +669,44 @@ tbody tr.flash{animation:flashRow .9s;}
       <div class="toggle-row"><span>Beep on scan (success + not-found sounds)</span><label class="switch"><input type="checkbox" id="optBeep" checked><span class="slider"></span></label></div>
       <div class="row2" style="margin-top:16px;">
         <div class="field"><label>Currency symbol</label><input id="optCurrency" value="₹"></div>
-        <div class="field"><label>Shelf tag layout (cols × rows per A4)</label>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input id="optCols" type="number" min="1" max="6" value="3" style="width:70px;"><span>×</span>
-            <input id="optRows" type="number" min="1" max="12" value="8" style="width:70px;">
-          </div>
+        <div class="field"><label>Shelf tag paper</label>
+          <select id="optPaperPreset">
+            <option value="plain">Plain A4 (auto-fit any cols × rows)</option>
+            <option value="vision24">Vision Supply 24UP — 80×24mm</option>
+            <option value="vision30">Vision Supply 30UP — 27×70mm</option>
+            <option value="vision33">Vision Supply 33UP — 25×70mm</option>
+            <option value="pos99_33">POS'99 33UP — 63×25mm</option>
+            <option value="custom">Custom — enter my own measurements</option>
+          </select>
         </div>
       </div>
+      <div id="paperPresetNote" class="hint" style="display:none;margin-top:-6px;margin-bottom:10px;"></div>
+
+      <div class="row2" style="margin-top:4px;">
+        <div class="field"><label>Columns</label><input id="optCols" type="number" min="1" max="12" value="3" style="width:100%;"></div>
+        <div class="field"><label>Rows</label><input id="optRows" type="number" min="1" max="20" value="8" style="width:100%;"></div>
+      </div>
+
+      <div id="paperCustomFields" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px;">
+        <div class="row2">
+          <div class="field"><label>Ticket width (mm)</label><input id="optTicketW" type="number" step="0.1" min="5" style="width:100%;"></div>
+          <div class="field"><label>Ticket height (mm)</label><input id="optTicketH" type="number" step="0.1" min="5" style="width:100%;"></div>
+        </div>
+        <div class="row2" style="margin-top:8px;">
+          <div class="field"><label>Top/bottom margin (mm)</label><input id="optMarginTop" type="number" step="0.1" min="0" style="width:100%;"></div>
+          <div class="field"><label>Left/right margin (mm)</label><input id="optMarginLeft" type="number" step="0.1" min="0" style="width:100%;"></div>
+        </div>
+        <div class="row2" style="margin-top:8px;">
+          <div class="field"><label>Gap between columns (mm)</label><input id="optGapX" type="number" step="0.1" min="0" style="width:100%;"></div>
+          <div class="field"><label>Gap between rows (mm)</label><input id="optGapY" type="number" step="0.1" min="0" style="width:100%;"></div>
+        </div>
+        <div class="row2" style="margin-top:8px;">
+          <div class="field"><label>Fine-tune: nudge right (mm)</label><input id="optOffsetX" type="number" step="0.1" value="0" style="width:100%;"></div>
+          <div class="field"><label>Fine-tune: nudge down (mm)</label><input id="optOffsetY" type="number" step="0.1" value="0" style="width:100%;"></div>
+        </div>
+        <p class="hint" style="margin-top:8px;margin-bottom:0;">Use the nudge fields if everything's the right size but sits slightly off the perforation — small printer margin differences are normal. Print the alignment test below after any change.</p>
+      </div>
+      <button class="btn ghost" id="btnPrintAlignTest" style="width:100%;justify-content:center;margin-top:10px;display:none;">🖨️ Print alignment test page</button>
     </div>
     <div class="modal-foot"><button class="btn primary" id="btnSaveSettings">Save settings</button></div>
   </div>
@@ -694,7 +758,7 @@ document.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('clic
 window.closeModal = closeModal;
 
 /* ===================== Firebase bootstrap ===================== */
-let app, auth, db;
+let app, auth, db, secondaryAuth;
 let currentUser = null;
 let isAdminUser = false;
 let storeCode = null;
@@ -714,7 +778,23 @@ let unsubProducts = null, unsubQueue = null, unsubBatches = null;
 let products = [];
 let queue = [];
 let batches = [];
-let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:false, currency:'₹', cols:3, rows:8, beepOnScan:true };
+let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:false, currency:'₹', cols:3, rows:8, beepOnScan:true,
+  paperPreset:'plain', ticketW:60, ticketH:34, marginTop:10, marginLeft:10, gapX:2.5, gapY:2.5, offsetX:0, offsetY:0 };
+
+// Best-effort starting values from each supplier's published listing.
+// Supplier text descriptions are sometimes inconsistent about orientation —
+// ALWAYS print the alignment test page and hold it against a real sheet
+// before running a full batch on pre-cut stock.
+const PAPER_PRESETS = {
+  vision24: { label:"Vision Supply 24UP — 80×24mm", cols:8, rows:3, ticketW:24, ticketH:80, marginTop:10, marginLeft:10, gapX:0, gapY:0,
+    note:"From Vision Supply's listing: 80×24mm tickets, 8×3 layout, 10mm border. Verify orientation with the alignment test before a full run — suppliers sometimes list width/height differently than how the sheet is actually cut." },
+  vision30: { label:"Vision Supply 30UP — 27×70mm", cols:3, rows:10, ticketW:27, ticketH:70, marginTop:10, marginLeft:10, gapX:1, gapY:1,
+    note:"From Vision Supply's listing: 27×70mm tickets, 3×10 layout. Verify with the alignment test before a full run." },
+  vision33: { label:"Vision Supply 33UP — 25×70mm", cols:3, rows:11, ticketW:25, ticketH:70, marginTop:10, marginLeft:10, gapX:1, gapY:1,
+    note:"From Vision Supply's listing: 25×70mm tickets, 3×11 layout, double-sided yellow/white stock. Verify with the alignment test before a full run." },
+  pos99_33: { label:"POS'99 33UP — 63×25mm", cols:3, rows:11, ticketW:63, ticketH:25, marginTop:10, marginLeft:10, gapX:1, gapY:1,
+    note:"From POS'99's listing: 63×25mm tickets, 33 per sheet. Verify with the alignment test before a full run." },
+};
 let pendingImportRows = [];
 let importHeaders = [];
 
@@ -731,6 +811,13 @@ function initFirebase(config){
   app = initializeApp(config);
   auth = getAuth(app);
   db = getFirestore(app);
+  // Secondary, isolated Firebase connection used ONLY for admin account
+  // creation. createUserWithEmailAndPassword auto-signs-in as the new user
+  // on whatever Auth instance calls it — running it here, on a completely
+  // separate connection, means your own admin session on `auth` above is
+  // never touched or logged out.
+  const secondaryApp = initializeApp(config, 'admin-provisioning');
+  secondaryAuth = getAuth(secondaryApp);
   try{ enableIndexedDbPersistence(db); }catch(e){ /* multiple tabs open, fine */ }
   onAuthStateChanged(auth, async user=>{
     currentUser = user;
@@ -1072,6 +1159,7 @@ async function enterStore(code){
   $('activeStoreName').textContent = data.name;
   $('storeCodePill').textContent = 'Code: '+code;
   $('adminViewBadge').style.display = (isAdminUser && !isMember && !isStaffSession) ? 'inline-block' : 'none';
+  $('btnAdminCreate').style.display = isAdminUser ? '' : 'none';
 
   if(isStaffSession){
     $('staffTag').style.display = 'flex';
@@ -1387,10 +1475,19 @@ $('searchBox').addEventListener('input', renderTable);
 
 /* ===================== Print queue ===================== */
 function typeConfig(type){
-  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo'};
-  if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo'};
-  if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo'};
-  return {cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag'};
+  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo', fixed:false};
+  if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false};
+  if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo', fixed:false};
+  if(settings.paperPreset && settings.paperPreset!=='plain'){
+    return {
+      cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag', fixed:true,
+      ticketW:settings.ticketW, ticketH:settings.ticketH,
+      marginTop:settings.marginTop, marginLeft:settings.marginLeft,
+      gapX:settings.gapX, gapY:settings.gapY,
+      offsetX:settings.offsetX||0, offsetY:settings.offsetY||0,
+    };
+  }
+  return {cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag', fixed:false};
 }
 function isPromoType(type){ return type==='a5' || type==='a4' || type==='a7'; }
 // Deterministic doc ID per (barcode, bay, type) — this is what actually
@@ -1988,13 +2085,118 @@ function closeCameraFn(){
 $('btnCloseCamera').addEventListener('click', closeCameraFn);
 $('btnCloseCamera2').addEventListener('click', closeCameraFn);
 
-/* ===================== Settings ===================== */
+/* ===================== Admin: create store account ===================== */
+function genPassword(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({length:12}, ()=> chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+$('btnAdminCreate').addEventListener('click', ()=>{
+  $('adminCreateForm').style.display = '';
+  $('adminCreateResult').style.display = 'none';
+  $('adminCreateErr').className = 'gate-err';
+  $('acEmail').value = ''; $('acPassword').value = ''; $('acStoreName').value = '';
+  openModal('overlayAdminCreate');
+});
+$('btnGenPassword').addEventListener('click', ()=>{
+  $('acPassword').value = genPassword();
+});
+$('btnAdminCreateAnother').addEventListener('click', ()=>{
+  $('adminCreateForm').style.display = '';
+  $('adminCreateResult').style.display = 'none';
+  $('acEmail').value = ''; $('acPassword').value = ''; $('acStoreName').value = '';
+});
+$('btnAdminCreateSubmit').addEventListener('click', async ()=>{
+  const email = $('acEmail').value.trim();
+  const pw = $('acPassword').value;
+  const storeName = $('acStoreName').value.trim();
+  $('adminCreateErr').className = 'gate-err';
+  if(!email || !email.includes('@')){ $('adminCreateErr').textContent='Enter a valid email.'; $('adminCreateErr').classList.add('show'); return; }
+  if(pw.length<6){ $('adminCreateErr').textContent='Password needs at least 6 characters.'; $('adminCreateErr').classList.add('show'); return; }
+  $('btnAdminCreateSubmit').disabled = true;
+  try{
+    // Runs on the isolated secondary Auth connection, so this never
+    // touches or replaces your own signed-in admin session.
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pw);
+    const newUid = cred.user.uid;
+    await signOut(secondaryAuth);
+
+    let code = null;
+    if(storeName){
+      code = uid6();
+      await setDoc(doc(db,'stores',code), { name: storeName, ownerUid: newUid, members:[newUid], createdAt: Date.now() });
+      await setDoc(doc(db,'stores',code,'memberInfo',newUid), { email, joinedAt: Date.now() });
+    }
+
+    $('acResultEmail').value = email;
+    $('acResultPassword').value = pw;
+    if(code){ $('acResultCode').value = code; $('acResultCodeField').style.display = ''; }
+    else { $('acResultCodeField').style.display = 'none'; }
+    $('adminCreateForm').style.display = 'none';
+    $('adminCreateResult').style.display = 'block';
+    toast('Account created');
+  }catch(e){
+    $('adminCreateErr').textContent = friendlyAuthError(e);
+    $('adminCreateErr').classList.add('show');
+  }finally{
+    $('btnAdminCreateSubmit').disabled = false;
+  }
+});
+function applyPaperPreset(presetKey, populateFields){
+  const preset = PAPER_PRESETS[presetKey];
+  const showAdvanced = presetKey !== 'plain';
+  $('paperCustomFields').style.display = showAdvanced ? 'block' : 'none';
+  $('btnPrintAlignTest').style.display = showAdvanced ? '' : 'none';
+  if(preset){
+    $('paperPresetNote').style.display = 'block';
+    $('paperPresetNote').textContent = preset.note;
+  } else {
+    $('paperPresetNote').style.display = 'none';
+  }
+  if(populateFields && preset){
+    $('optCols').value = preset.cols; $('optRows').value = preset.rows;
+    $('optTicketW').value = preset.ticketW; $('optTicketH').value = preset.ticketH;
+    $('optMarginTop').value = preset.marginTop; $('optMarginLeft').value = preset.marginLeft;
+    $('optGapX').value = preset.gapX; $('optGapY').value = preset.gapY;
+    $('optOffsetX').value = 0; $('optOffsetY').value = 0;
+  }
+}
+$('optPaperPreset').addEventListener('change', e=>{
+  applyPaperPreset(e.target.value, e.target.value!=='custom');
+});
+$('btnPrintAlignTest').addEventListener('click', ()=>{
+  // Read whatever's currently in the form (even unsaved) so you can
+  // iterate — adjust a nudge value, test-print again, without saving each time.
+  const tempSettings = Object.assign({}, settings, {
+    paperPreset: $('optPaperPreset').value,
+    cols: Math.max(1, parseInt($('optCols').value)||1),
+    rows: Math.max(1, parseInt($('optRows').value)||1),
+    ticketW: parseFloat($('optTicketW').value)||30,
+    ticketH: parseFloat($('optTicketH').value)||20,
+    marginTop: parseFloat($('optMarginTop').value)||0,
+    marginLeft: parseFloat($('optMarginLeft').value)||0,
+    gapX: parseFloat($('optGapX').value)||0,
+    gapY: parseFloat($('optGapY').value)||0,
+    offsetX: parseFloat($('optOffsetX').value)||0,
+    offsetY: parseFloat($('optOffsetY').value)||0,
+  });
+  const prevSettings = settings;
+  settings = tempSettings;
+  $('printArea').innerHTML = buildAlignmentTestHtml();
+  window.print();
+  settings = prevSettings;
+});
 $('btnSettings').addEventListener('click', ()=>{
   $('optMrp').checked = settings.mrp; $('optUnit').checked = settings.unit;
   $('optCategory').checked = settings.category; $('optBay').checked = settings.showBay;
   $('optExpiry').checked = settings.expiry; $('optCurrency').value = settings.currency;
   $('optCols').value = settings.cols; $('optRows').value = settings.rows;
   $('optBeep').checked = settings.beepOnScan !== false;
+  $('optPaperPreset').value = settings.paperPreset || 'plain';
+  $('optTicketW').value = settings.ticketW; $('optTicketH').value = settings.ticketH;
+  $('optMarginTop').value = settings.marginTop; $('optMarginLeft').value = settings.marginLeft;
+  $('optGapX').value = settings.gapX; $('optGapY').value = settings.gapY;
+  $('optOffsetX').value = settings.offsetX||0; $('optOffsetY').value = settings.offsetY||0;
+  applyPaperPreset(settings.paperPreset || 'plain', false);
   openModal('overlaySettings');
 });
 $('btnSaveSettings').addEventListener('click', ()=>{
@@ -2004,6 +2206,15 @@ $('btnSaveSettings').addEventListener('click', ()=>{
   settings.cols = Math.max(1, parseInt($('optCols').value)||3);
   settings.rows = Math.max(1, parseInt($('optRows').value)||8);
   settings.beepOnScan = $('optBeep').checked;
+  settings.paperPreset = $('optPaperPreset').value;
+  settings.ticketW = parseFloat($('optTicketW').value)||30;
+  settings.ticketH = parseFloat($('optTicketH').value)||20;
+  settings.marginTop = parseFloat($('optMarginTop').value)||0;
+  settings.marginLeft = parseFloat($('optMarginLeft').value)||0;
+  settings.gapX = parseFloat($('optGapX').value)||0;
+  settings.gapY = parseFloat($('optGapY').value)||0;
+  settings.offsetX = parseFloat($('optOffsetX').value)||0;
+  settings.offsetY = parseFloat($('optOffsetY').value)||0;
   closeModal('overlaySettings');
   renderTable(); renderQueue(); saveSettingsLocal();
   toast('Settings saved on this device');
@@ -2081,10 +2292,43 @@ function buildPagesHtml(list){
       const cells = chunk.map(ticketHtml).join('');
       const filler = perPage - chunk.length;
       const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
-      html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
+      if(cfg.fixed){
+        // Exact-mm mode for pre-cut/perforated stock: cell size and gaps are
+        // fixed physical values (not evenly divided across the page), and
+        // any leftover space is simply left blank — same as a real sheet.
+        const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm ${cfg.marginTop}mm ${cfg.marginLeft+cfg.offsetX}mm;`;
+        const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
+        html += `<div class="page-frame"><div class="page" style="${pageStyle}"><div class="ticket-grid ${cfg.cls}" style="${gridStyle}">${cells}${fillerHtml}</div></div></div>`;
+      } else {
+        html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
+      }
     }
   });
   return html;
+}
+function buildAlignmentTestHtml(){
+  const cfg = typeConfig('shelf');
+  if(!cfg.fixed){
+    return `<div class="page-frame"><div class="page" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:20mm;">
+      <div style="font-family:sans-serif;font-size:14px;color:#666;">Alignment test only applies when a specific paper preset is selected.<br>Choose one under Settings → Shelf tag paper first.</div>
+    </div></div>`;
+  }
+  const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm ${cfg.marginTop}mm ${cfg.marginLeft+cfg.offsetX}mm;`;
+  const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
+  let cells = '';
+  for(let i=0;i<cfg.cols*cfg.rows;i++){
+    cells += `<div style="border:1px solid #0a0;position:relative;box-sizing:border-box;">
+      <div style="position:absolute;top:-1px;left:-1px;width:4mm;height:1px;background:#e00;"></div>
+      <div style="position:absolute;top:-1px;left:-1px;width:1px;height:4mm;background:#e00;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:4mm;height:1px;background:#e00;"></div>
+      <div style="position:absolute;bottom:-1px;right:-1px;width:1px;height:4mm;background:#e00;"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:#999;">${cfg.ticketW}×${cfg.ticketH}mm</div>
+    </div>`;
+  }
+  return `<div class="page-frame"><div class="page" style="${pageStyle}">
+    <div style="font-family:sans-serif;font-size:9px;color:#999;position:absolute;top:2mm;left:2mm;">Alignment test — hold this against your perforated sheet, held up to a light. Green outlines should trace each ticket's edge exactly.</div>
+    <div style="${gridStyle}">${cells}</div>
+  </div></div>`;
 }
 function renderBarcodes(root){
   root.querySelectorAll('.barcode-svg').forEach(svg=>{
