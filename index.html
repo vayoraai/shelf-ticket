@@ -570,10 +570,10 @@ tbody tr.flash{animation:flashRow .9s;}
     <div class="modal-head"><h2>Scan with phone camera</h2><button class="icon-btn" id="btnCloseCamera">✕</button></div>
     <div class="modal-body">
       <div id="cameraWrap"><div class="scan-frame"></div></div>
-      <div class="cam-status" id="camStatus">Point your camera at a barcode…</div>
-      <button class="btn primary" id="btnScanNext" style="display:none;width:100%;justify-content:center;margin-top:10px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-        Tap to scan next item
+      <div class="cam-status" id="camStatus">Point the barcode inside the box, then tap Scan</div>
+      <button class="btn primary" id="btnScanTrigger" style="width:100%;justify-content:center;margin-top:10px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+        Tap to Scan
       </button>
     </div>
     <div class="modal-foot"><button class="btn ghost" id="btnCloseCamera2">Done</button></div>
@@ -1656,9 +1656,23 @@ function isValidGtinChecksum(code){
 }
 
 let quaggaRunning = false;
+let scanArmed = false; // true only in the moment right after a Scan tap — this is the real fix:
+                        // detection results are only ever acted on while armed, so simply having
+                        // a barcode in view (without tapping) never adds anything by itself.
+
+function setTriggerIdle(){
+  scanArmed = false;
+  $('btnScanTrigger').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg> Tap to Scan';
+}
+function setTriggerArmed(){
+  scanArmed = true;
+  $('btnScanTrigger').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg> Scanning… tap to cancel';
+  $('camStatus').textContent = 'Hold steady on the barcode…';
+}
+
 $('btnCamera').addEventListener('click', ()=>{
   getAudioCtx(); // unlock audio now, on the actual tap
-  $('btnScanNext').style.display = 'none';
+  setTriggerIdle();
   openModal('overlayCamera');
   $('camStatus').textContent = 'Starting camera…';
   Quagga.init({
@@ -1674,11 +1688,18 @@ $('btnCamera').addEventListener('click', ()=>{
     locate:true,
   }, err=>{
     if(err){ $('camStatus').textContent = 'Could not access camera: '+err.message; return; }
+    // The camera stream itself starts here and keeps running for the whole
+    // time this modal is open — it is never stopped/restarted between
+    // individual scans, since doing that turned out to be unreliable on
+    // iOS (that was the "camera won't reopen" bug). Only the *armed* flag
+    // above, gated by the Scan button, controls when a detection is
+    // actually acted on.
     Quagga.start(); quaggaRunning = true;
-    $('camStatus').textContent = 'Point your camera at a barcode…';
+    $('camStatus').textContent = 'Point the barcode inside the box, then tap Scan';
   });
   let lastCode='', lastTime=0, candidateCode='', candidateCount=0;
   Quagga.onDetected(data=>{
+    if(!scanArmed) return; // ignore everything unless the Scan button was actually pressed
     const code = data.codeResult.code;
     const now = Date.now();
     if(code===lastCode && now-lastTime < 1500) return; // already acted on this one recently
@@ -1703,28 +1724,24 @@ $('btnCamera').addEventListener('click', ()=>{
     }
     lastCode = code; lastTime = now; candidateCode=''; candidateCount=0;
 
-    // Pause here, every time — this is what puts you back in control of
-    // exactly how many copies get added. The camera stops the instant one
-    // clean scan is confirmed, instead of continuing to re-detect the same
-    // barcode over and over while it's still sitting in frame.
-    if(quaggaRunning){ Quagga.stop(); quaggaRunning = false; }
+    // One capture per tap — disarm immediately so nothing further gets
+    // added until you deliberately tap Scan again for the next item.
+    setTriggerIdle();
     $('camStatus').textContent = `Detected: ${code}`;
     handleScan(code);
-    // If the camera modal is still open, the item was found and added —
-    // offer an explicit button to continue rather than resuming on its own.
-    if($('overlayCamera').classList.contains('show')){
-      $('btnScanNext').style.display = '';
-    }
   });
 });
-$('btnScanNext').addEventListener('click', ()=>{
-  $('btnScanNext').style.display = 'none';
-  $('camStatus').textContent = 'Point your camera at a barcode…';
-  if(!quaggaRunning){ Quagga.start(); quaggaRunning = true; }
+$('btnScanTrigger').addEventListener('click', ()=>{
+  if(scanArmed){
+    setTriggerIdle();
+    $('camStatus').textContent = 'Cancelled — tap Scan when ready';
+  } else {
+    setTriggerArmed();
+  }
 });
 function closeCameraFn(){
   closeModal('overlayCamera');
-  $('btnScanNext').style.display = 'none';
+  setTriggerIdle();
   if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; }
 }
 $('btnCloseCamera').addEventListener('click', closeCameraFn);
