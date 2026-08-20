@@ -158,7 +158,7 @@ tbody tr.flash{animation:flashRow .9s;}
 
 #printArea{display:none;}
 .page-frame{margin:0 auto 24px;}
-.page{background:#fff;width:210mm;min-height:297mm;padding:10mm;box-shadow:var(--shadow);}
+.page{background:#fff;width:210mm;height:297mm;padding:10mm;box-shadow:var(--shadow);}
 .ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),1fr);grid-template-rows:repeat(var(--rows,8),1fr);gap:2.5mm;}
 .ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;}
 .t-top .t-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;line-height:1.15;color:#1a1a1a;}
@@ -170,8 +170,9 @@ tbody tr.flash{animation:flashRow .9s;}
 .t-price{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:19px;color:var(--green-900);line-height:1;}
 .t-mrp{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a8a8a;text-decoration:line-through;margin-left:5px;}
 .t-exp{font-size:7.4px;color:var(--red);font-weight:600;}
-.t-bottom{display:flex;flex-direction:column;align-items:center;}
-.t-bottom svg{width:100%;height:auto;max-height:11mm;}
+.t-bottom{display:flex;flex-direction:column;align-items:center;flex:none;}
+.t-bottom svg{width:100%;height:auto;max-height:9mm;}
+.t-bottom .t-barcode-num{font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:.03em;color:#333;margin-top:.4mm;}
 
 /* Promo tickets (A5 / A4) */
 .ticket-grid.type-promoA5{gap:4mm;}
@@ -193,7 +194,9 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA5 .t-exp{font-size:11px;}
 .type-promoA4 .t-exp{font-size:15px;}
 .type-promoA5 .t-bottom svg{max-height:20mm;}
+.type-promoA5 .t-barcode-num{font-size:10px;}
 .type-promoA4 .t-bottom svg{max-height:30mm;}
+.type-promoA4 .t-barcode-num{font-size:13px;}
 .t-discount{
   position:absolute;top:8mm;right:8mm;background:var(--red);color:#fff;font-weight:800;
   font-size:14px;padding:5px 13px;border-radius:30px;transform:rotate(6deg);
@@ -1794,7 +1797,7 @@ function shelfTicketHtml(p){
     <div class="t-top"><div class="t-name">${escapeHtml(p.name)}</div><div class="t-meta">${bayHtml}${catHtml}${qtyHtml}</div></div>
     <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
     ${expHtml}
-    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg></div>
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
   </div>`;
 }
 function formatDateShort(d){
@@ -1828,7 +1831,7 @@ function promoTicketHtml(p, type){
     <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
     ${saleDatesHtml(p)}
     ${expHtml}
-    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg></div>
+    <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
   </div>`;
 }
 function buildPagesHtml(list){
@@ -1852,8 +1855,12 @@ function renderBarcodes(root){
   root.querySelectorAll('.barcode-svg').forEach(svg=>{
     const code = svg.dataset.code;
     if(!code) return;
-    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:true, fontSize:9, height:26, margin:0, width:1.1 }); }
-    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:true, fontSize:9, height:26, margin:0, width:1.1 }); }catch(e2){} }
+    // displayValue is off here on purpose — the barcode number is now a
+    // separate, guaranteed plain-text element (.t-barcode-num) next to the
+    // SVG, so the number always shows even in the rare case a print
+    // pipeline has trouble with something baked inside the SVG itself.
+    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:false, height:24, margin:0, width:1.1 }); }
+    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:false, height:24, margin:0, width:1.1 }); }catch(e2){} }
   });
 }
 // The ticket page is built at true A4 size (210mm ≈ 794px) so print output is
