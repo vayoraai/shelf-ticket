@@ -197,17 +197,26 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA5 .t-barcode-num{font-size:10px;}
 
 .type-promoA4 .t-barcode-num{font-size:13px;}
-.t-discount{
-  position:absolute;top:8mm;right:8mm;background:var(--red);color:#fff;font-weight:800;
-  font-size:14px;padding:5px 13px;border-radius:30px;transform:rotate(6deg);
-  box-shadow:0 2px 6px rgba(0,0,0,.18);
+
+/* Offer banner — full-width strip running across the top of the ticket,
+   not a corner badge. Negative margins cancel the ticket's own padding so
+   it reaches edge-to-edge; top corners match the ticket's own radius. */
+.t-offer-banner{
+  background:var(--red); color:#fff; font-weight:800; text-align:center;
+  letter-spacing:.02em; line-height:1.2;
 }
-.type-promoA4 .t-discount{font-size:24px;padding:9px 20px;top:12mm;right:12mm;}
+.type-promoA5 .t-offer-banner, .type-promoA4 .t-offer-banner{
+  margin:-10mm -12mm 10px -12mm; border-radius:4mm 4mm 0 0;
+}
+.type-promoA5 .t-offer-banner{font-size:22px; padding:9px 12mm;}
+.type-promoA4 .t-offer-banner{font-size:36px; padding:15px 12mm;}
+
 .t-promo-label{
-  position:absolute;top:8mm;left:8mm;background:var(--green-900);color:#fff;font-weight:700;
-  font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:20px;
+  display:inline-block; background:var(--green-900); color:#fff; font-weight:700;
+  font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:5px 12px;
+  border-radius:20px; margin-bottom:6px;
 }
-.type-promoA4 .t-promo-label{font-size:16px;padding:8px 18px;top:12mm;left:12mm;}
+.type-promoA4 .t-promo-label{font-size:16px;padding:8px 18px;margin-bottom:10px;}
 .t-sale-dates{font-size:9px;color:#8a8474;font-weight:600;margin-top:.6mm;}
 .type-promoA5 .t-sale-dates{font-size:11.5px;}
 .type-promoA4 .t-sale-dates{font-size:15px;}
@@ -226,8 +235,8 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA7 .t-exp{font-size:7.6px;}
 .type-promoA7 .t-sale-dates{font-size:7.6px;}
 
-.type-promoA7 .t-discount{font-size:10.5px;padding:3px 8px;top:3mm;right:3mm;}
-.type-promoA7 .t-promo-label{font-size:8px;padding:3px 7px;top:3mm;left:3mm;}
+.type-promoA7 .t-offer-banner{font-size:11px;padding:4px 5mm;margin:-4mm -5mm 5px -5mm;border-radius:2.5mm 2.5mm 0 0;}
+.type-promoA7 .t-promo-label{font-size:8px;padding:3px 7px;margin-bottom:4px;}
 
 @media print{
   body *{visibility:hidden;}
@@ -1923,11 +1932,40 @@ function renderBatches(){
       <td class="cell-barcode">${escapeHtml(created)}</td>
       <td>${statusHtml}</td>
       <td style="text-align:right;white-space:nowrap;">
+        <select class="bay-edit-input batchTypeEdit" style="width:auto;display:inline-block;margin-right:6px;">
+          <option value="">Change format…</option>
+          <option value="shelf">Shelf tag</option>
+          <option value="a7">Promo A7</option>
+          <option value="a5">Promo A5</option>
+          <option value="a4">Promo A4</option>
+        </select>
         <button class="btn ghost" style="padding:6px 10px;" data-action="preview">Preview &amp; Print</button>
         <button class="icon-btn del" data-action="delete" title="Delete batch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>
       </td>`;
     tbody.appendChild(tr);
     tr.querySelector('[data-action="preview"]').addEventListener('click', ()=> previewBatch(b));
+    tr.querySelector('.batchTypeEdit').addEventListener('change', async e=>{
+      const newType = e.target.value;
+      if(!newType) return;
+      const label = {shelf:'Shelf tag', a7:'Promo A7', a5:'Promo A5', a4:'Promo A4'}[newType];
+      if(!confirm(`Change every ticket in "${b.name}" to ${label}? This updates the saved batch — reprint afterward to get the new layout.`)){
+        e.target.value = ''; return;
+      }
+      try{
+        const itemsSnap = await getDocs(collection(db,'stores',storeCode,'batches',b.id,'items'));
+        let wb2 = writeBatch(db), ops = 0;
+        const commits = [];
+        itemsSnap.forEach(d=>{
+          wb2.update(d.ref, { type: newType });
+          ops++;
+          if(ops>=400){ commits.push(wb2.commit()); wb2 = writeBatch(db); ops=0; }
+        });
+        if(ops>0) commits.push(wb2.commit());
+        await Promise.all(commits);
+        toast(`Batch updated to ${label}`);
+        e.target.value = '';
+      }catch(err){ toast('Could not update format: '+err.message, 'err'); e.target.value=''; }
+    });
     tr.querySelector('[data-action="delete"]').addEventListener('click', async ()=>{
       if(!confirm(`Delete batch "${b.name}"? This can't be undone.`)) return;
       try{
@@ -2626,21 +2664,57 @@ function computeOfferText(p){
   if(type==='custom' && p.offerCustomText) return p.offerCustomText;
   return null;
 }
+// The item's regular `price` IS the standard shelf price (treated as the
+// reference/"was" amount) — percent and special offers compute a derived
+// sale price directly from it, so there's no separate MRP field to keep in
+// sync. Bundle/custom deals are quantity- or wording-based, not a per-unit
+// price cut, so they show the plain regular price with no strikethrough —
+// the banner itself carries the deal.
+function computeOfferPricing(p){
+  const type = p.offerType || '';
+  const regular = Number(p.price||0);
+  if(type==='percent' && p.offerPercent){
+    return { was: regular, now: regular * (1 - p.offerPercent/100), showStrike: true };
+  }
+  if(type==='special' && p.offerPrice!=null){
+    const now = Number(p.offerPrice);
+    return { was: regular, now, showStrike: regular > now };
+  }
+  return { was: null, now: regular, showStrike: false };
+}
 function promoTicketHtml(p, type){
-  const autoDiscount = (settings.mrp && p.onPromotion && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
   const manualOffer = computeOfferText(p);
+  const hasManualOffer = !!(p.offerType);
+  // Promo tickets with a manual offer compute pricing straight from the
+  // offer (see computeOfferPricing) — the old MRP/onPromotion checkbox
+  // path only applies when no offer type is set at all, so the two never
+  // show conflicting numbers on the same ticket.
+  const pricing = hasManualOffer ? computeOfferPricing(p) : null;
+  const autoDiscount = (!hasManualOffer && settings.mrp && p.onPromotion && p.mrp && p.price && p.mrp>p.price) ? Math.round((1-p.price/p.mrp)*100) : null;
   const catHtml = settings.category && p.category ? `<span class="t-cat">${escapeHtml(p.category)}</span>` : '';
   const bayHtml = settings.showBay && p.bay ? `<span class="t-bay">${escapeHtml(p.bay)}</span>` : '';
   const qtyHtml = p.qty ? `<span class="t-qty">${escapeHtml(p.qty)}${settings.unit && p.unit ? ' '+escapeHtml(p.unit):''}</span>` : '';
-  const mrpHtml = settings.mrp && p.onPromotion && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
   const expHtml = settings.expiry && p.expiry ? `<div class="t-exp">Best before ${escapeHtml(p.expiry)}</div>` : '';
   const labelHtml = p.promoLabel ? `<div class="t-promo-label">${escapeHtml(p.promoLabel)}</div>` : '';
-  const discountHtml = manualOffer ? `<div class="t-discount">${escapeHtml(manualOffer)}</div>` : (autoDiscount ? `<div class="t-discount">${autoDiscount}% OFF</div>` : '');
+  const bannerText = manualOffer || (autoDiscount ? `${autoDiscount}% OFF` : null);
+  const bannerHtml = bannerText ? `<div class="t-offer-banner">${escapeHtml(bannerText)}</div>` : '';
   const svgId = 'bc_'+Math.random().toString(36).slice(2,10);
+
+  let priceHtml;
+  if(pricing && pricing.showStrike && pricing.was!=null){
+    priceHtml = `<div class="t-price">${settings.currency}${pricing.now.toFixed(2)}<span class="t-mrp">${settings.currency}${pricing.was.toFixed(2)}</span></div>`;
+  } else if(pricing){
+    priceHtml = `<div class="t-price">${settings.currency}${pricing.now.toFixed(2)}</div>`;
+  } else {
+    const mrpHtml = settings.mrp && p.onPromotion && p.mrp ? `<span class="t-mrp">${settings.currency}${Number(p.mrp).toFixed(2)}</span>` : '';
+    priceHtml = `<div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div>`;
+  }
+
   return `<div class="ticket promo-ticket">
-    ${labelHtml}${discountHtml}
+    ${bannerHtml}
+    ${labelHtml}
     <div class="t-top"><div class="t-name">${escapeHtml(p.name)}</div><div class="t-meta">${bayHtml}${catHtml}${qtyHtml}</div></div>
-    <div class="t-mid"><div class="t-price">${settings.currency}${Number(p.price||0).toFixed(2)}${mrpHtml}</div></div>
+    <div class="t-mid">${priceHtml}</div>
     ${saleDatesHtml(p)}
     ${expHtml}
     <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}" data-type="${type}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
