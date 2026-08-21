@@ -1161,12 +1161,28 @@ $('btnSwitchName').addEventListener('click', async ()=>{
 });
 
 /* ===================== GATE 3: Store select ===================== */
-async function showStoreGate(){
+async function showStoreGate(forcePicker){
   $('gateAuth').style.display='none';
-  $('gateStore').style.display='flex';
   $('mainApp').style.display='none';
-  $('authEmailShown').textContent = currentUser.email;
   await autoJoinInvitedStores();
+  // Most store owners only ever belong to one store — if that's the case
+  // here, skip the picker screen entirely and go straight in, UNLESS the
+  // picker was explicitly requested (e.g. "Switch / join store" from
+  // inside the app) — otherwise that button would be a dead end for
+  // anyone with just one store. Global admins always see the picker
+  // regardless, since they need it for the admin tools/reports.
+  if(!isAdminUser && !forcePicker){
+    try{
+      const q = query(collection(db,'stores'), where('members','array-contains', currentUser.uid));
+      const snap = await getDocs(q);
+      if(snap.size === 1){
+        enterStore(snap.docs[0].id);
+        return;
+      }
+    }catch(e){ /* fall through to the normal picker on any query issue */ }
+  }
+  $('gateStore').style.display='flex';
+  $('authEmailShown').textContent = currentUser.email;
   await renderMyStores();
   await renderAdminStores();
 }
@@ -1388,7 +1404,7 @@ $('btnSwitchStore').addEventListener('click', ()=>{
     $('gateStaff').style.display='flex';
   } else {
     localStorage.removeItem('shelfticket-store-code');
-    showStoreGate();
+    showStoreGate(true);
   }
 });
 
