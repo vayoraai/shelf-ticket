@@ -628,15 +628,6 @@ tbody tr.flash{animation:flashRow .9s;}
         <div id="staffList"></div>
       </div>
 
-      <div id="inviteSection" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
-        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Invite another owner/admin</label>
-        <div style="display:flex;gap:8px;">
-          <input type="email" id="inviteEmail" placeholder="their.email@store.com" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;">
-          <button class="btn primary" id="btnSendInvite">Invite</button>
-        </div>
-        <p class="hint" style="margin-top:6px;">For someone who needs full owner-level access (not just staff scanning). You'll get a one-time setup code to share with them directly — works immediately, no email dependency.</p>
-        <div id="pendingInvites" style="margin-top:10px;"></div>
-      </div>
       <div id="dangerZone" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Danger zone (admin only)</label>
         <button class="btn danger" style="width:100%;justify-content:center;" id="btnDeleteStore">Delete this store permanently</button>
@@ -1481,7 +1472,6 @@ $('btnMembers').addEventListener('click', async ()=>{
   const list = $('membersList');
   list.innerHTML = '<p class="hint">Loading…</p>';
   const isOwnerOfThisStore = currentUser.uid === currentStoreOwnerUid;
-  $('inviteSection').style.display = (isAdminUser || isOwnerOfThisStore) ? 'block' : 'none';
   $('dangerZone').style.display = isAdminUser ? 'block' : 'none';
   try{
     const snap = await getDoc(doc(db,'stores',storeCode));
@@ -1553,67 +1543,9 @@ $('btnMembers').addEventListener('click', async ()=>{
         staffList.appendChild(row);
       });
     }
-
-    if(isAdminUser || isOwnerOfThisStore){
-      const pendingWrap = $('pendingInvites');
-      pendingWrap.innerHTML = '';
-      if(invitedEmails.length){
-        invitedEmails.forEach(email=>{
-          const row = document.createElement('div');
-          row.className = 'member-row';
-          row.innerHTML = `<div class="who"><b>${escapeHtml(email)}</b><span>Invited — not joined yet</span></div>`;
-          const btn = document.createElement('button');
-          btn.className = 'btn ghost'; btn.style.color = 'var(--red)'; btn.textContent = 'Cancel';
-          btn.addEventListener('click', async ()=>{
-            try{
-              await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayRemove(email) });
-              toast('Invite cancelled');
-              $('btnMembers').click();
-            }catch(e){ toast('Could not cancel: '+e.message, 'err'); }
-          });
-          row.appendChild(btn);
-          pendingWrap.appendChild(row);
-        });
-      }
-    }
   }catch(e){
     list.innerHTML = `<p class="hint">Couldn't load members: ${escapeHtml(e.message)}</p>`;
   }
-});
-
-$('btnSendInvite').addEventListener('click', async ()=>{
-  const email = $('inviteEmail').value.trim().toLowerCase();
-  const btn = $('btnSendInvite');
-  if(!email || !email.includes('@')){ toast('Enter a valid email', 'err'); return; }
-  btn.disabled = true;
-  try{
-    // Create the login ourselves (on the isolated secondary connection, so
-    // it never touches your own signed-in session). The setup code IS the
-    // real (temporary) password — works immediately regardless of email
-    // deliverability. They're forced to set a permanent one on first sign-in.
-    let accountIsNew = true;
-    let setupCode = null;
-    try{
-      setupCode = genSetupCode();
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, setupCode);
-      await signOut(secondaryAuth);
-      await setDoc(doc(db,'userMeta',cred.user.uid), { needsPasswordSetup:true, email, createdAt:Date.now() });
-    }catch(e){
-      if(e.code === 'auth/email-already-in-use'){ accountIsNew = false; }
-      else throw e;
-    }
-    await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayUnion(email) });
-    if(accountIsNew){
-      try{ await sendPasswordResetEmail(auth, email); }catch(e){ /* setup code works regardless */ }
-      prompt(`Share this with ${email} directly (text/WhatsApp) — it's their one-time sign-in code. An email backup was sent too, but don't rely on it:`, setupCode);
-      toast(`${email} can now sign in with that code`);
-    } else {
-      toast(`${email} already has an account — they'll join this store automatically next time they sign in`);
-    }
-    $('inviteEmail').value = '';
-    $('btnMembers').click();
-  }catch(e){ toast('Could not send invite: '+e.message, 'err'); }
-  finally{ btn.disabled = false; }
 });
 
 $('btnDeleteStore').addEventListener('click', async ()=>{
