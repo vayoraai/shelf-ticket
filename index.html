@@ -383,8 +383,8 @@ tbody tr.flash{animation:flashRow .9s;}
     <h2>Choose a store</h2>
     <p class="sub">You'll only ever see stores you've personally joined — no store can see another's data.</p>
     <div id="adminStoresWrap" style="display:none;margin-bottom:18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <label style="font-size:12px;font-weight:700;color:#b3630f;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
+      <div style="display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:6px;margin-bottom:8px;">
+        <label style="flex:1 1 100%;white-space:nowrap;font-size:12px;font-weight:700;color:#b3630f;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnAdminReports">📊 Reports</button>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnAdminBackup">💾 Backup data</button>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnStripeSetup" title="Creates the launch coupon, customer portal and payment webhook in Stripe. Safe to run again.">💳 Stripe setup</button>
@@ -2101,6 +2101,8 @@ document.querySelectorAll('#planAdminWrap [data-plan]').forEach(btn=>{
       toast('Plan updated');
       currentStoreData = Object.assign({}, currentStoreData, { plan });
       renderPlanAdmin();
+      renderBillingBox();
+      applyPlanState();
     }catch(e){ toast('Could not update plan: '+e.message, 'err'); }
   });
 });
