@@ -55,6 +55,18 @@ button{font-family:inherit;} input,select,textarea{font-family:inherit;}
 .storebar .label{color:#cfe8da;font-size:12px;font-weight:600;margin-right:2px;}
 .storebar .code-pill{background:#0f2e21;color:#8fd6ab;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 10px;border-radius:7px;cursor:pointer;}
 .storebar .spacer{flex:1;}
+.plan-badge{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;}
+.plan-badge.trial{background:#fbe9d4;color:#8a4d10;}
+.plan-badge.urgent{background:#f6d3cf;color:#9b2c22;}
+.plan-badge.paid{background:#d9efe1;color:#1f5c41;cursor:default;}
+.flag-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;margin-left:5px;background:#f6d3cf;color:#9b2c22;font-family:Inter,sans-serif;}
+.status-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;margin-left:5px;background:#eef2fb;color:#3a4d8f;font-family:Inter,sans-serif;}
+.price-box{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0;text-align:center;}
+.price-box .big{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;color:var(--green-900);}
+.price-box .small{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+.verify-box{background:#fbe9d4;border:1px solid #f0cfa5;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.5;color:#6b3d0c;}
+.plan-admin{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px;}
+.plan-admin .btn{padding:6px 10px;font-size:12px;}
 
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:16px;box-shadow:var(--shadow);}
 .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:9px 14px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;}
@@ -158,9 +170,16 @@ tbody tr.flash{animation:flashRow .9s;}
 
 #printArea{display:none;}
 .page-frame{margin:0 auto 24px;}
-.page{background:#fff;width:210mm;height:297mm;padding:10mm;box-shadow:var(--shadow);position:relative;box-sizing:border-box;}
-.ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),1fr);grid-template-rows:repeat(var(--rows,8),1fr);gap:2.5mm;}
-.ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;}
+.page{background:#fff;width:210mm;height:297mm;padding:10mm;box-shadow:var(--shadow);position:relative;box-sizing:border-box;overflow:hidden;}
+.ticket-grid{display:grid;height:100%;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));grid-template-rows:repeat(var(--rows,8),minmax(0,1fr));gap:2.5mm;}
+.ticket{border:1px dashed #b9b3a0;border-radius:2mm;padding:2.6mm 3mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative;min-width:0;min-height:0;box-sizing:border-box;}
+.t-top .t-name{overflow-wrap:anywhere;}
+.t-mid .t-price{white-space:nowrap;}
+.t-promo-label{align-self:flex-start;}
+/* Tall, narrow pre-cut stock (e.g. 24×80mm): the ticket is laid out as a
+   normal landscape tag and turned 90° to sit in the portrait cell. */
+.rot-cell{position:relative;overflow:hidden;}
+.rot-cell > .ticket{position:absolute;left:0;top:0;transform-origin:top left;}
 .t-top .t-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;line-height:1.15;color:#1a1a1a;}
 .t-top .t-meta{display:flex;gap:6px;margin-top:1.4mm;flex-wrap:wrap;}
 .t-cat{font-size:7.6px;text-transform:uppercase;letter-spacing:.03em;color:#6a6a6a;background:#f1f1f1;padding:1px 5px;border-radius:3px;}
@@ -175,19 +194,24 @@ tbody tr.flash{animation:flashRow .9s;}
 .t-bottom .t-barcode-num{font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:.03em;color:#333;margin-top:.4mm;}
 
 /* Promo tickets (A5 / A4) */
-.ticket-grid.type-promoA5{gap:4mm;}
+.ticket-grid.type-promoA5{gap:0;}
 .ticket-grid.type-promoA4{gap:0;}
-.type-promoA5 .ticket, .type-promoA4 .ticket{
+.type-promoA4 .ticket{
   border-style:solid;border-width:1.4px;border-color:#d8d2c4;border-radius:4mm;
   padding:10mm 12mm;position:relative;background:linear-gradient(180deg,#fff,#fbf9f3);
 }
+.type-promoA5 .ticket{border:none;border-radius:0;padding:12mm 14mm 10mm;position:relative;background:#fff;}
+.page.page-cut{padding:0;}
+.cut-line{position:absolute;pointer-events:none;z-index:2;}
+.cut-line.v{top:0;bottom:0;width:0;border-left:0.3mm dashed #b9b3a0;}
+.cut-line.h{left:0;right:0;height:0;border-top:0.3mm dashed #b9b3a0;}
 .type-promoA5 .t-name{font-size:24px;line-height:1.2;}
 .type-promoA4 .t-name{font-size:40px;line-height:1.2;}
 .type-promoA5 .t-cat,.type-promoA5 .t-bay{font-size:11px;padding:3px 9px;}
 .type-promoA4 .t-cat,.type-promoA4 .t-bay{font-size:15px;padding:5px 14px;}
 .type-promoA5 .t-qty{font-size:13px;}
 .type-promoA4 .t-qty{font-size:19px;}
-.type-promoA5 .t-price{font-size:48px;}
+.type-promoA5 .t-price{font-size:58px;}
 .type-promoA4 .t-price{font-size:92px;}
 .type-promoA5 .t-mrp{font-size:17px;margin-left:10px;}
 .type-promoA4 .t-mrp{font-size:30px;margin-left:16px;}
@@ -205,10 +229,11 @@ tbody tr.flash{animation:flashRow .9s;}
   background:var(--red); color:#fff; font-weight:800; text-align:center;
   letter-spacing:.02em; line-height:1.2;
 }
-.type-promoA5 .t-offer-banner, .type-promoA4 .t-offer-banner{
+.type-promoA4 .t-offer-banner{
   margin:-10mm -12mm 10px -12mm; border-radius:4mm 4mm 0 0;
 }
-.type-promoA5 .t-offer-banner{font-size:22px; padding:9px 12mm;}
+.type-promoA5 .t-offer-banner{margin:0 0 4mm 0; border-radius:3mm;}
+.type-promoA5 .t-offer-banner{font-size:28px; padding:10px 8mm;}
 .type-promoA4 .t-offer-banner{font-size:36px; padding:15px 12mm;}
 
 .t-promo-label{
@@ -221,34 +246,36 @@ tbody tr.flash{animation:flashRow .9s;}
 .type-promoA5 .t-sale-dates{font-size:11.5px;}
 .type-promoA4 .t-sale-dates{font-size:15px;}
 
-/* Promo A7 — 8 per A4 (2 cols x 4 rows), landscape cells */
-.ticket-grid.type-promoA7{gap:2.5mm;}
+/* Promo A7 — 8 per A4 landscape (4 cols x 2 rows), true 74×105mm cells */
+.ticket-grid.type-promoA7{gap:0;}
 .type-promoA7 .ticket{
-  border-style:solid;border-width:1.2px;border-color:#d8d2c4;border-radius:2.5mm;
-  padding:4mm 5mm;position:relative;background:linear-gradient(180deg,#fff,#fbf9f3);
+  border:none;border-radius:0;padding:7mm 6mm 6mm;position:relative;background:#fff;
 }
-.type-promoA7 .t-name{font-size:14.5px;line-height:1.15;}
+/* Landscape A4 sheet (A7 tickets: 4 across × 2 down, edge to edge). */
+.page-frame.pf-landscape .page{width:297mm;height:210mm;}
+.type-promoA7 .t-name{font-size:17px;line-height:1.18;}
 .type-promoA7 .t-cat,.type-promoA7 .t-bay{font-size:8px;padding:2px 6px;}
 .type-promoA7 .t-qty{font-size:9px;}
-.type-promoA7 .t-price{font-size:25px;}
-.type-promoA7 .t-mrp{font-size:11.5px;margin-left:6px;}
+.type-promoA7 .t-price{font-size:34px;}
+.type-promoA7 .t-mrp{font-size:13px;margin-left:6px;}
 .type-promoA7 .t-exp{font-size:7.6px;}
 .type-promoA7 .t-sale-dates{font-size:7.6px;}
 
-.type-promoA7 .t-offer-banner{font-size:11px;padding:4px 5mm;margin:-4mm -5mm 5px -5mm;border-radius:2.5mm 2.5mm 0 0;}
+.type-promoA7 .t-offer-banner{font-size:16px;padding:6px 3mm;margin:0 0 3mm 0;border-radius:2mm;}
 .type-promoA7 .t-promo-label{font-size:8px;padding:3px 7px;margin-bottom:4px;}
 
+#printArea, #printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 @media print{
-  body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
-  #printArea{display:block;position:absolute;top:0;left:0;margin:0;}
-  .page-frame{margin:0;page-break-after:always;}
-  .page-frame:last-child{page-break-after:auto;}
-  .page{box-shadow:none;}
-  @page{size:A4;margin:0;}
-  @page a7landscape{size:A4 landscape;margin:0;}
-  .page-frame.pf-landscape{page:a7landscape;}
-  .page-frame.pf-landscape .page{width:297mm;height:210mm;}
+  html, body{margin:0 !important;padding:0 !important;background:#fff !important;height:auto !important;min-height:0 !important;overflow:visible !important;}
+  body > *:not(#printArea){display:none !important;}
+  #printArea{display:block !important;position:static !important;left:auto !important;top:auto !important;visibility:visible !important;margin:0;}
+  .page-frame{margin:0;width:auto !important;height:auto !important;overflow:visible !important;break-after:page;page-break-after:always;}
+  .page-frame:last-child{break-after:auto;page-break-after:auto;}
+  .page{box-shadow:none;transform:none !important;height:296.8mm;}
+  .page-frame.pf-landscape{page:a4land;}
+  .page-frame.pf-landscape .page{width:297mm;height:209.8mm;}
+  @page{size:A4 portrait;margin:0;}
+  @page a4land{size:A4 landscape;margin:0;}
 }
 @media (max-width:720px){ .row2,.row3{grid-template-columns:1fr;} .brand p{display:none;} }
 
@@ -299,19 +326,24 @@ tbody tr.flash{animation:flashRow .9s;}
 <!-- ============ GATE: Auth ============ -->
 <div class="gate" id="gateAuth" style="display:none;">
   <div class="gate-card">
-    <h2>Sign in</h2>
-    <p class="sub">Sign in to sync your store's tickets across every device. Access is by invitation — contact your store admin if you don't have an account yet.</p>
+    <div class="gate-tabs">
+      <div class="gate-tab active" id="authTabSignIn">Sign in</div>
+      <div class="gate-tab" id="authTabSignUp">Start free trial</div>
+    </div>
+    <p class="sub" id="authSub">Sign in to sync your store's tickets across every device.</p>
     <div class="gate-err" id="authErr"></div>
-    <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@store.com"></div>
-    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="At least 6 characters"></div>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@store.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="At least 6 characters" autocomplete="current-password"></div>
+    <div class="field" id="authConfirmField" style="display:none;"><label>Confirm password</label><input id="authPassword2" type="password" placeholder="Type it again" autocomplete="new-password"></div>
     <button class="btn primary" style="width:100%;justify-content:center;" id="btnAuthSubmit">Sign in</button>
-    <p style="text-align:center;margin:12px 0 0;">
+    <p class="hint" id="authTrialNote" style="display:none;text-align:center;margin-top:10px;">30 days free, no card needed. Then A$25/month — launch offer A$10/month for your first 3 months.</p>
+    <p style="text-align:center;margin:12px 0 0;" id="forgotWrap">
       <a href="#" id="btnForgotPassword" style="font-size:12.5px;color:var(--green-700);font-weight:600;text-decoration:none;">Forgot your password?</a>
     </p>
     <div class="or-divider">or</div>
     <button class="btn primary" style="width:100%;justify-content:center;background:var(--green-100);border-color:var(--green-100);color:var(--green-800);" id="btnGoStaffJoin">I'm on staff — join with a store code</button>
     <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;display:none;" id="btnChangeConfig">Use a different Firebase project</button>
-    <p class="hint" style="text-align:center;margin-top:8px;">Having trouble signing in? Contact your store admin.</p>
+    <p class="hint" style="text-align:center;margin-top:8px;">Having trouble signing in? Contact your store owner, or <a href="mailto:vayora.ai@gmail.com" style="color:var(--green-700);">email us</a>.</p>
   </div>
 </div>
 
@@ -354,6 +386,8 @@ tbody tr.flash{animation:flashRow .9s;}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <label style="font-size:12px;font-weight:700;color:#b3630f;text-transform:uppercase;letter-spacing:.03em;">⚡ Admin — all stores</label>
         <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnAdminReports">📊 Reports</button>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnAdminBackup">💾 Backup data</button>
+        <button class="btn ghost" style="padding:5px 10px;font-size:12px;" id="btnStripeSetup" title="Creates the launch coupon, customer portal and payment webhook in Stripe. Safe to run again.">💳 Stripe setup</button>
       </div>
       <div id="adminStoresList"></div>
     </div>
@@ -362,21 +396,50 @@ tbody tr.flash{animation:flashRow .9s;}
       <div id="myStoresList"></div>
     </div>
     <div class="gate-tabs">
-      <div class="gate-tab active" id="storeTabCreate">Create store</div>
-      <div class="gate-tab" id="storeTabJoin">Join with code</div>
+      <div class="gate-tab active" id="storeTabCreate">Start your store</div>
+      <div class="gate-tab" id="storeTabJoin">I was invited</div>
     </div>
     <div class="gate-err" id="storeErr"></div>
+    <div id="verifyBox" class="verify-box" style="display:none;">
+      <b>Check your inbox.</b> We sent a link to <b id="verifyEmailShown"></b>. Click it to confirm your email, then come back here.
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn primary" id="btnVerifiedContinue" style="padding:7px 12px;font-size:12.5px;">I've confirmed — continue</button>
+        <button class="btn ghost" id="btnResendVerify" style="padding:7px 12px;font-size:12.5px;">Resend email</button>
+      </div>
+    </div>
     <div id="storeCreatePane">
       <div class="field"><label>Store name</label><input id="newStoreName" placeholder="e.g. Green Valley Grocers"></div>
-      <button class="btn primary" style="width:100%;justify-content:center;" id="btnCreateStore">Create store</button>
+      <div class="field"><label>ABN</label><input id="newStoreAbn" inputmode="numeric" placeholder="11 digits, e.g. 51 824 753 556"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;" id="btnCreateStore">Start 30-day free trial</button>
+      <p class="hint" style="margin-top:8px;">One free trial per business. No card needed. Then A$25/month — launch offer A$10/month for your first 3 months.</p>
     </div>
     <div id="storeJoinPane" style="display:none;">
+      <p class="hint" style="margin-bottom:10px;">If another owner of the store invited your email, enter their store code. (Staff don't need an account — they use "I'm on staff" on the sign-in screen.)</p>
       <div class="field"><label>Store code</label><input id="joinStoreCode" placeholder="e.g. 7XQ2KD" style="text-transform:uppercase;"></div>
       <button class="btn primary" style="width:100%;justify-content:center;" id="btnJoinStore">Join store</button>
     </div>
     <div class="or-divider">signed in as <span id="authEmailShown"></span></div>
     <button class="btn ghost" style="width:100%;justify-content:center;" id="btnCopyUid">Copy my account ID (for admin setup)</button>
     <button class="btn ghost" style="width:100%;justify-content:center;margin-top:8px;" id="btnSignOutFromStore">Sign out</button>
+  </div>
+</div>
+
+<!-- ============ GATE: Payment page (trial ended / no trial) ============ -->
+<div class="gate" id="gatePaywall" style="display:none;">
+  <div class="gate-card" style="max-width:460px;">
+    <h2 id="paywallTitle">Your free trial has ended</h2>
+    <p class="sub" id="paywallSub">Subscribe to keep scanning, importing and printing. Your catalog, print queue and saved batches are kept safe.</p>
+    <div class="price-box" id="paywallPrice">
+      <div class="big">A$25<span style="font-size:15px;font-weight:600;color:var(--ink-soft);">/month</span></div>
+      <div class="small"><b>Launch offer:</b> A$10/month for your first 3 months.<br>Per store · unlimited staff and devices · cancel any time</div>
+    </div>
+    <a class="btn primary" id="btnSubscribe" style="width:100%;justify-content:center;text-decoration:none;" href="#">Subscribe</a>
+    <p class="hint" id="paywallStaffNote" style="display:none;text-align:center;margin-top:10px;">Only the store owner can subscribe — please let them know.</p>
+    <p class="hint" style="text-align:center;margin-top:10px;" id="paywallHelp">Store: <b id="paywallStore"></b> · Code <span id="paywallCode" style="font-family:'IBM Plex Mono',monospace;"></span><br>Think this is a mistake? <a id="paywallContact" href="#" style="color:var(--green-700);font-weight:600;">Contact us</a></p>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnPaywallSwitch">Switch store</button>
+      <button class="btn ghost" style="flex:1;justify-content:center;" id="btnPaywallSignOut">Sign out</button>
+    </div>
   </div>
 </div>
 
@@ -404,6 +467,7 @@ tbody tr.flash{animation:flashRow .9s;}
     <span class="label">Store:</span>
     <b id="activeStoreName" style="color:#fff;font-size:13.5px;"></b>
     <span class="code-pill" id="storeCodePill" title="Click to copy invite code">Code: —</span>
+    <span id="planBadge" class="plan-badge trial" style="display:none;"></span>
     <span id="adminViewBadge" style="display:none;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:20px;">ADMIN VIEW</span>
     <button class="btn" id="btnAdminCreate" style="display:none;">+ Create store account</button>
     <div class="spacer"></div>
@@ -628,6 +692,31 @@ tbody tr.flash{animation:flashRow .9s;}
         <div id="staffList"></div>
       </div>
 
+      <div id="inviteOwnerWrap" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Invite another owner / manager</label>
+        <p class="hint" style="margin-bottom:10px;">For people who need full access (settings, staff). They create an account with this email, confirm it, then choose <b>"I was invited"</b> and enter your store code.</p>
+        <div style="display:flex;gap:8px;"><input id="inviteOwnerEmail" type="email" placeholder="manager@store.com" style="flex:1;"><button class="btn primary" id="btnInviteOwner">Invite</button></div>
+        <div id="pendingInvites" style="margin-top:8px;"></div>
+      </div>
+
+      <div id="billingWrap" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Subscription</label>
+        <div class="hint" id="billingInfo" style="margin-bottom:10px;"></div>
+        <button class="btn primary" id="btnBillingAction"></button>
+      </div>
+
+      <div id="planAdminWrap" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+        <label style="display:block;font-size:12px;font-weight:600;color:#b3630f;margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;">⚡ Plan (admin only)</label>
+        <div class="hint" id="planAdminInfo"></div>
+        <div class="plan-admin">
+          <button class="btn ghost" data-plan="trial30">Give 30-day trial</button>
+          <button class="btn ghost" data-plan="extend14">+14 days</button>
+          <button class="btn ghost" data-plan="active">Mark as paid</button>
+          <button class="btn ghost" data-plan="comped">Complimentary</button>
+          <button class="btn ghost" data-plan="lock" style="color:var(--red);">Lock (needs payment)</button>
+        </div>
+      </div>
+
       <div id="dangerZone" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
         <label style="display:block;font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">Danger zone (admin only)</label>
         <button class="btn danger" style="width:100%;justify-content:center;" id="btnDeleteStore">Delete this store permanently</button>
@@ -662,6 +751,32 @@ tbody tr.flash{animation:flashRow .9s;}
       <button class="btn ghost" style="flex:1;justify-content:center;" id="btnExportAdminReportsCsv">Export CSV</button>
       <button class="btn primary" style="flex:1;justify-content:center;" id="btnExportAdminReportsXlsx">Export Excel</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ Admin: full data backup ============ -->
+<div class="overlay" id="overlayAdminBackup">
+  <div class="modal">
+    <div class="modal-head"><h2>Backup all data</h2><button class="icon-btn" data-close="overlayAdminBackup">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">Pulls every store, product, print queue, batch, and staff record straight from Firestore into a file you keep. Doesn't touch or affect the live data — this is read-only.</p>
+      <div id="backupIdle">
+        <button class="btn primary" style="width:100%;justify-content:center;" id="btnRunBackup">Run backup now</button>
+      </div>
+      <div id="backupRunning" style="display:none;text-align:center;padding:20px 0;">
+        <p style="color:var(--ink-soft);" id="backupProgress">Starting…</p>
+      </div>
+      <div id="backupDone" style="display:none;">
+        <div class="callout-ok" style="background:#eafaf1;border:1px solid #b7e6cb;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1b6b41;">Backup complete. Save both files somewhere safe — Google Drive, a shared drive, wherever you'd trust with the only copy.</div>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-bottom:8px;" id="btnDownloadBackupJson">Download full backup (.json)</button>
+        <button class="btn ghost" style="width:100%;justify-content:center;" id="btnDownloadBackupXlsx">Download readable summary (.xlsx)</button>
+        <p class="hint" style="margin-top:10px;">The .json file is the complete, restorable copy. The .xlsx is for a human to skim — store list, full catalog, batches, and staff, each on their own sheet.</p>
+      </div>
+      <div class="callout warn" style="margin-top:16px;">
+        This backs up Firestore data only. Login accounts (email/password) aren't included — those need a separate one-time command run from a computer with the Firebase CLI installed: <code style="background:#fff;border:1px solid #e8c98a;border-radius:4px;padding:1px 6px;font-family:monospace;font-size:11px;">firebase auth:export users-backup.json --project shelf-ticket</code>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" data-close="overlayAdminBackup">Close</button></div>
   </div>
 </div>
 
@@ -782,8 +897,8 @@ tbody tr.flash{animation:flashRow .9s;}
           <select id="optPaperPreset">
             <option value="plain">Plain A4 (auto-fit any cols × rows)</option>
             <option value="vision24">Vision Supply 24UP — 80×24mm</option>
-            <option value="vision30">Vision Supply 30UP — 27×70mm</option>
-            <option value="vision33">Vision Supply 33UP — 25×70mm</option>
+            <option value="vision30">Vision Supply 30UP — 70×27mm</option>
+            <option value="vision33">Vision Supply 33UP — 70×25mm</option>
             <option value="pos99_33">POS'99 33UP — 63×25mm</option>
             <option value="custom">Custom — enter my own measurements</option>
           </select>
@@ -840,8 +955,10 @@ tbody tr.flash{animation:flashRow .9s;}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
-  sendPasswordResetEmail, createUserWithEmailAndPassword, signInAnonymously, updatePassword
+  sendPasswordResetEmail, createUserWithEmailAndPassword, signInAnonymously, updatePassword,
+  sendEmailVerification, reload, getIdToken
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
   getDoc, getDocs, onSnapshot, writeBatch, enableIndexedDbPersistence,
@@ -867,7 +984,66 @@ document.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('clic
 window.closeModal = closeModal;
 
 /* ===================== Firebase bootstrap ===================== */
-let app, auth, db, secondaryAuth;
+let app, auth, db, secondaryAuth, fns;
+/* ===================== Plans & pricing ===================== */
+// Shown on the trial banner and the payment page. Until Stripe checkout is
+// connected, "Subscribe" opens an email to SUPPORT_EMAIL with the store code.
+const SUPPORT_EMAIL = 'vayora.ai@gmail.com';
+const PRICE_TEXT = 'A$25/month';
+const LAUNCH_OFFER_TEXT = 'Launch offer: A$10/month for your first 3 months';
+const SUBSCRIBE_URL = '';
+const STRIPE_ENABLED = true;   // Subscribe / Manage go through Stripe (server functions)
+const TRIAL_DAYS = 30;
+let currentStoreData = null;
+let unsubStoreDoc = null;
+// A random ID kept on this device. Sent with "start trial" so a device that
+// already used a free trial doesn't get another one with a new email.
+function deviceId(){
+  try{
+    let id = localStorage.getItem('vayora-device-id');
+    if(!id){
+      id = (crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), b=>b.toString(16).padStart(2,'0')).join(''));
+      localStorage.setItem('vayora-device-id', id);
+    }
+    return id;
+  }catch(e){ return ''; }
+}
+// Works out what a store's plan allows right now.
+function planState(data){
+  const p = data && data.plan;
+  if(!p) return { locked:false, status:'legacy', label:null };
+  if(p.status==='active') return { locked:false, status:'active', label:'Subscribed' };
+  if(p.status==='comped') return { locked:false, status:'comped', label:'Complimentary' };
+  if(p.status==='trialing'){
+    const daysLeft = Math.ceil(((p.trialEndsAt||0) - Date.now()) / 864e5);
+    if(daysLeft > 0) return { locked:false, status:'trialing', daysLeft, label:`Free trial · ${daysLeft} day${daysLeft===1?'':'s'} left` };
+    return { locked:true, status:'trial_ended', label:'Trial ended' };
+  }
+  if(p.status==='payment_required') return { locked:true, status:'payment_required', label:'Subscription needed' };
+  return { locked:true, status:p.status||'inactive', label:'Subscription needed' };
+}
+async function goToStripe(fnName, btn){
+  if(btn){ btn.disabled = true; btn.dataset.label = btn.dataset.label || btn.textContent; btn.textContent = 'Opening secure payment page…'; }
+  try{
+    const res = await httpsCallable(fns, fnName)({ storeCode });
+    location.href = res.data.url;
+  }catch(e){
+    toast((e && e.message) || 'Could not open the payment page — please try again.', 'err');
+    if(btn){ btn.disabled = false; btn.textContent = btn.dataset.label; }
+  }
+}
+function startCheckout(btn){
+  if(!STRIPE_ENABLED){ window.open(subscribeHref(), '_blank'); return; }
+  if(isStaffSession){ toast('Only the store owner can subscribe', 'err'); return; }
+  goToStripe('createCheckout', btn);
+}
+function openBillingPortal(btn){ goToStripe('createPortal', btn); }
+function subscribeHref(){
+  if(SUBSCRIBE_URL) return SUBSCRIBE_URL + (SUBSCRIBE_URL.includes('?')?'&':'?') + 'client_reference_id=' + encodeURIComponent(storeCode||'');
+  const subj = `Subscribe — Vayora Tickets store ${storeCode||''}`;
+  const body = `Hi, I'd like to subscribe.\n\nStore: ${(currentStoreData&&currentStoreData.name)||''}\nStore code: ${storeCode||''}\nAccount: ${(currentUser&&currentUser.email)||''}`;
+  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+}
 let currentUser = null;
 let isAdminUser = false;
 let storeCode = null;
@@ -897,11 +1073,11 @@ let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:fals
 const PAPER_PRESETS = {
   vision24: { label:"Vision Supply 24UP — 80×24mm", cols:8, rows:3, ticketW:24, ticketH:80, marginTop:10, marginLeft:10, gapX:0, gapY:0,
     note:"From Vision Supply's listing: 80×24mm tickets, 8×3 layout, 10mm border. Verify orientation with the alignment test before a full run — suppliers sometimes list width/height differently than how the sheet is actually cut." },
-  vision30: { label:"Vision Supply 30UP — 27×70mm", cols:3, rows:10, ticketW:27, ticketH:70, marginTop:10, marginLeft:10, gapX:1, gapY:1,
-    note:"From Vision Supply's listing: 27×70mm tickets, 3×10 layout. Verify with the alignment test before a full run." },
-  vision33: { label:"Vision Supply 33UP — 25×70mm", cols:3, rows:11, ticketW:25, ticketH:70, marginTop:10, marginLeft:10, gapX:1, gapY:1,
-    note:"From Vision Supply's listing: 25×70mm tickets, 3×11 layout, double-sided yellow/white stock. Verify with the alignment test before a full run." },
-  pos99_33: { label:"POS'99 33UP — 63×25mm", cols:3, rows:11, ticketW:63, ticketH:25, marginTop:10, marginLeft:10, gapX:1, gapY:1,
+  vision30: { label:"Vision Supply 30UP — 70×27mm", cols:3, rows:10, ticketW:70, ticketH:27, marginTop:13.5, marginLeft:0, gapX:0, gapY:0,
+    note:"Vision Supply 30UP: 70×27mm tickets, 3 across × 10 down, edge-to-edge (no gaps). Verify with the alignment test before a full run." },
+  vision33: { label:"Vision Supply 33UP — 70×25mm", cols:3, rows:11, ticketW:70, ticketH:25, marginTop:11, marginLeft:0, gapX:0, gapY:0,
+    note:"Vision Supply 33UP: 70×25mm tickets, 3 across × 11 down, edge-to-edge, double-sided yellow/white stock. Verify with the alignment test before a full run." },
+  pos99_33: { label:"POS'99 33UP — 63×25mm", cols:3, rows:11, ticketW:63, ticketH:25, marginTop:11, marginLeft:8.5, gapX:2, gapY:0,
     note:"From POS'99's listing: 63×25mm tickets, 33 per sheet. Verify with the alignment test before a full run." },
 };
 let pendingImportRows = [];
@@ -927,6 +1103,7 @@ function initFirebase(config){
   // never touched or logged out.
   const secondaryApp = initializeApp(config, 'admin-provisioning');
   secondaryAuth = getAuth(secondaryApp);
+  fns = getFunctions(app, 'australia-southeast1');
   try{ enableIndexedDbPersistence(db); }catch(e){ /* multiple tabs open, fine */ }
   onAuthStateChanged(auth, async user=>{
     currentUser = user;
@@ -1030,21 +1207,49 @@ $('btnSaveConfig').addEventListener('click', ()=>{
 });
 
 /* ===================== GATE 2: Auth ===================== */
-// Public self-sign-up is intentionally off — accounts are created by an
-// admin (Firebase console → Authentication → Add user) and shared with
-// whoever should have access. createUserWithEmailAndPassword stays
-// imported/available in case an in-app "invite teammate" admin tool gets
-// built later, but nothing in this UI calls it today.
+// Two modes on one card: "Sign in" and "Start free trial" (create account).
+// New owners create their own account here, verify their email, then start
+// their store (with its 30-day trial) on the next screen.
+let authMode = 'signin';
+function setAuthMode(mode){
+  authMode = mode;
+  const up = mode==='signup';
+  $('authTabSignIn').classList.toggle('active', !up);
+  $('authTabSignUp').classList.toggle('active', up);
+  $('authConfirmField').style.display = up ? '' : 'none';
+  $('authTrialNote').style.display = up ? '' : 'none';
+  $('forgotWrap').style.display = up ? 'none' : '';
+  $('authSub').textContent = up
+    ? 'Create your owner account. Staff don\'t need one — they join later with your store code.'
+    : 'Sign in to sync your store\'s tickets across every device.';
+  $('btnAuthSubmit').textContent = up ? 'Create account' : 'Sign in';
+  $('authPassword').setAttribute('autocomplete', up ? 'new-password' : 'current-password');
+  $('authErr').className = 'gate-err';
+}
+$('authTabSignIn').addEventListener('click', ()=> setAuthMode('signin'));
+$('authTabSignUp').addEventListener('click', ()=> setAuthMode('signup'));
+// Links from the website (tickets.vayora.au/?signup=1) open straight on "Start free trial".
+if(new URLSearchParams(location.search).get('signup') === '1') setAuthMode('signup');
+
 $('btnAuthSubmit').addEventListener('click', async ()=>{
   const email = $('authEmail').value.trim();
   const pw = $('authPassword').value;
   $('authErr').className='gate-err';
   if(!email || pw.length<6){ $('authErr').textContent='Enter a valid email and a password of 6+ characters.'; $('authErr').classList.add('show'); return; }
+  if(authMode==='signup' && pw !== $('authPassword2').value){ $('authErr').textContent="Passwords don't match."; $('authErr').classList.add('show'); return; }
+  $('btnAuthSubmit').disabled = true;
   try{
-    await signInWithEmailAndPassword(auth, email, pw);
+    if(authMode==='signup'){
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      try{ await sendEmailVerification(cred.user); }catch(e){ /* can resend from the next screen */ }
+    } else {
+      await signInWithEmailAndPassword(auth, email, pw);
+    }
   }catch(e){
     $('authErr').textContent = friendlyAuthError(e);
     $('authErr').classList.add('show');
+  }finally{
+    $('btnAuthSubmit').disabled = false;
   }
 });
 $('btnForgotPassword').addEventListener('click', async (e)=>{
@@ -1064,7 +1269,7 @@ function friendlyAuthError(e){
   const c = e.code||'';
   if(c.includes('email-already-in-use')) return 'That email already has an account — try signing in instead.';
   if(c.includes('wrong-password') || c.includes('invalid-credential')) return 'Incorrect email or password.';
-  if(c.includes('user-not-found')) return "No account with that email — check with your store admin, or you're on the wrong Firebase project.";
+  if(c.includes('user-not-found')) return "No account with that email — tap \"Start free trial\" to create one.";
   if(c.includes('weak-password')) return 'Password should be at least 6 characters.';
   if(c.includes('invalid-email')) return 'That email address looks invalid.';
   if(c.includes('too-many-requests')) return 'Too many attempts — please wait a bit and try again.';
@@ -1133,15 +1338,20 @@ $('btnStaffJoin').addEventListener('click', async ()=>{
     // Anonymous auth first so the store lookup below is authenticated —
     // rules only allow reading a store doc to a signed-in user.
     if(!auth.currentUser){ await signInAnonymously(auth); }
-    const snap = await getDoc(doc(db,'stores',code));
-    if(!snap.exists()){ $('staffErr').textContent='No store found with that code — double check with your manager.'; $('staffErr').classList.add('show'); return; }
     const uid = auth.currentUser.uid;
-    await updateDoc(doc(db,'stores',code), { staffUids: arrayUnion(uid) });
+    // Join first (only your own name goes on the store), then read it —
+    // stores are only readable by people who belong to them.
+    try{ await updateDoc(doc(db,'stores',code), { staffUids: arrayUnion(uid) }); }
+    catch(err){
+      if(String(err.code||err.message).includes('not-found') || String(err.message).includes('No document')){ $('staffErr').textContent='No store found with that code — double check with your manager.'; $('staffErr').classList.add('show'); return; }
+      throw err;
+    }
     await setDoc(doc(db,'stores',code,'staffProfiles',uid), { name, joinedAt: Date.now() }, {merge:true});
     localStorage.setItem('shelfticket-staff-code', code);
     localStorage.setItem('shelfticket-staff-name', name);
     currentStaffName = name;
     isStaffSession = true;
+    currentUser = auth.currentUser;
     $('gateStaff').style.display='none';
     enterStore(code);
   }catch(e){
@@ -1183,6 +1393,7 @@ async function showStoreGate(forcePicker){
   }
   $('gateStore').style.display='flex';
   $('authEmailShown').textContent = currentUser.email;
+  showVerifyBox();
   await renderMyStores();
   await renderAdminStores();
 }
@@ -1190,7 +1401,7 @@ async function showStoreGate(forcePicker){
 async function autoJoinInvitedStores(){
   try{
     const myEmail = (currentUser.email||'').toLowerCase();
-    if(!myEmail) return;
+    if(!myEmail || !currentUser.emailVerified) return;
     const q = query(collection(db,'stores'), where('invitedEmails','array-contains', myEmail));
     const snap = await getDocs(q);
     for(const d of snap.docs){
@@ -1240,7 +1451,10 @@ async function renderAdminStores(){
       const data = d.data();
       const row = document.createElement('div');
       row.className = 'my-store-row';
-      row.innerHTML = `<b>${escapeHtml(data.name)}</b><span>${d.id} · ${(data.members||[]).length} member(s)</span>`;
+      const st = planState(data);
+      const chip = st.label ? `<span class="status-chip">${escapeHtml(st.label.toUpperCase())}</span>` : '';
+      const flags = (data.flags||[]).length ? `<span class="flag-chip">⚑ ${escapeHtml(data.flags.join(', ').replace(/repeat-/g,'repeat ').toUpperCase())}</span>` : '';
+      row.innerHTML = `<b>${escapeHtml(data.name)}${chip}${flags}</b><span>${d.id} · ${(data.members||[]).length} member(s)</span>`;
       row.addEventListener('click', ()=> enterStore(d.id));
       list.appendChild(row);
     });
@@ -1317,6 +1531,115 @@ function renderAdminReportsTable(rows){
   });
 }
 $('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
+
+/* ===================== Admin: full data backup ===================== */
+let lastBackupPayload = null;
+$('btnAdminBackup').addEventListener('click', ()=>{
+  $('backupIdle').style.display = 'block';
+  $('backupRunning').style.display = 'none';
+  $('backupDone').style.display = 'none';
+  openModal('overlayAdminBackup');
+});
+$('btnRunBackup').addEventListener('click', async ()=>{
+  $('backupIdle').style.display = 'none';
+  $('backupRunning').style.display = 'block';
+  $('backupDone').style.display = 'none';
+  try{
+    const backup = { exportedAt: new Date().toISOString(), admins: [], userMeta: [], stores: [] };
+
+    $('backupProgress').textContent = 'Reading admins and account records…';
+    const adminsSnap = await getDocs(collection(db,'admins'));
+    backup.admins = adminsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    const userMetaSnap = await getDocs(collection(db,'userMeta'));
+    backup.userMeta = userMetaSnap.docs.map(d=>({id:d.id, ...d.data()}));
+
+    const storesSnap = await getDocs(collection(db,'stores'));
+    let i = 0;
+    for(const storeDoc of storesSnap.docs){
+      i++;
+      const code = storeDoc.id;
+      $('backupProgress').textContent = `Backing up store ${i} of ${storesSnap.size} (${storeDoc.data().name||code})…`;
+      const storeData = { id: code, ...storeDoc.data() };
+
+      const [productsSnap, queueSnap, batchesSnap, memberInfoSnap, staffProfilesSnap] = await Promise.all([
+        getDocs(collection(db,'stores',code,'products')),
+        getDocs(collection(db,'stores',code,'queue')),
+        getDocs(collection(db,'stores',code,'batches')),
+        getDocs(collection(db,'stores',code,'memberInfo')),
+        getDocs(collection(db,'stores',code,'staffProfiles')),
+      ]);
+      storeData.products = productsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      storeData.queue = queueSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      storeData.memberInfo = memberInfoSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      storeData.staffProfiles = staffProfilesSnap.docs.map(d=>({id:d.id, ...d.data()}));
+
+      storeData.batches = [];
+      for(const batchDoc of batchesSnap.docs){
+        const itemsSnap = await getDocs(collection(db,'stores',code,'batches',batchDoc.id,'items'));
+        storeData.batches.push({
+          id: batchDoc.id, ...batchDoc.data(),
+          items: itemsSnap.docs.map(d=>({id:d.id, ...d.data()})),
+        });
+      }
+      backup.stores.push(storeData);
+    }
+
+    lastBackupPayload = backup;
+    $('backupRunning').style.display = 'none';
+    $('backupDone').style.display = 'block';
+    toast('Backup ready');
+  }catch(e){
+    $('backupRunning').style.display = 'none';
+    $('backupIdle').style.display = 'block';
+    toast('Backup failed: '+e.message, 'err');
+  }
+});
+$('btnDownloadBackupJson').addEventListener('click', ()=>{
+  if(!lastBackupPayload) return;
+  const json = JSON.stringify(lastBackupPayload, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `vayora-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+$('btnDownloadBackupXlsx').addEventListener('click', ()=>{
+  if(!lastBackupPayload) return;
+  const b = lastBackupPayload;
+  const wb = XLSX.utils.book_new();
+
+  const storeRows = b.stores.map(s=>({
+    Code: s.id, Name: s.name||'', Owner: s.ownerUid||'',
+    Members: (s.members||[]).length, Staff: (s.staffUids||[]).length,
+    Created: s.createdAt ? new Date(s.createdAt).toISOString() : '',
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(storeRows), 'Stores');
+
+  const productRows = [];
+  b.stores.forEach(s => (s.products||[]).forEach(p => productRows.push({
+    Store: s.name, StoreCode: s.id, Barcode: p.barcode||'', Name: p.name||'',
+    Price: p.price??'', MRP: p.mrp??'', Qty: p.qty||'', Unit: p.unit||'', Category: p.category||'',
+  })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productRows), 'Products');
+
+  const batchRows = [];
+  b.stores.forEach(s => (s.batches||[]).forEach(bt => batchRows.push({
+    Store: s.name, StoreCode: s.id, Batch: bt.name||'', Items: bt.itemCount??'',
+    Tickets: bt.ticketCount??'', Printed: bt.printed ? 'Yes' : 'No',
+    Created: bt.createdAt ? new Date(bt.createdAt).toISOString() : '',
+  })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(batchRows), 'Batches');
+
+  const staffRows = [];
+  b.stores.forEach(s => (s.staffProfiles||[]).forEach(sp => staffRows.push({
+    Store: s.name, StoreCode: s.id, Name: sp.name||'',
+    Joined: sp.joinedAt ? new Date(sp.joinedAt).toISOString() : '',
+  })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(staffRows), 'Staff');
+
+  XLSX.writeFile(wb, `vayora-backup-summary-${new Date().toISOString().slice(0,10)}.xlsx`);
+});
 $('btnRefreshAdminReports').addEventListener('click', loadAdminReports);
 function adminReportRowsForExport(){
   return lastAdminReportRows.map(r=>({
@@ -1345,6 +1668,15 @@ $('btnExportAdminReportsXlsx').addEventListener('click', ()=>{
   XLSX.utils.book_append_sheet(wb, ws, 'Store Reports');
   XLSX.writeFile(wb, `store-reports-${new Date().toISOString().slice(0,10)}.xlsx`);
 });
+$('btnStripeSetup').addEventListener('click', async ()=>{
+  const btn = $('btnStripeSetup');
+  btn.disabled = true; const label = btn.textContent; btn.textContent = 'Setting up…';
+  try{
+    const r = (await httpsCallable(fns, 'stripeSetup')({})).data;
+    toast(`Stripe (${r.mode} mode) ready: ${r.done.join(', ')}`);
+  }catch(e){ toast('Stripe setup failed: ' + (e.message||e), 'err'); }
+  finally{ btn.disabled = false; btn.textContent = label; }
+});
 $('btnCopyUid').addEventListener('click', ()=>{
   navigator.clipboard?.writeText(currentUser.uid);
   toast('Account ID copied — paste it as the admins/<id> document in Firestore');
@@ -1357,29 +1689,67 @@ $('storeTabJoin').addEventListener('click', ()=>{
   $('storeTabJoin').classList.add('active'); $('storeTabCreate').classList.remove('active');
   $('storeJoinPane').style.display=''; $('storeCreatePane').style.display='none';
 });
+function abnLooksValid(raw){
+  const d = String(raw||'').replace(/\D/g,'');
+  if(d.length!==11) return false;
+  const w=[10,1,3,5,7,9,11,13,15,17,19], n=d.split('').map(Number); n[0]-=1;
+  return n.reduce((s,x,i)=>s+x*w[i],0)%89===0;
+}
+function showVerifyBox(){
+  const need = currentUser && !currentUser.isAnonymous && !currentUser.emailVerified;
+  $('verifyBox').style.display = need ? 'block' : 'none';
+  $('verifyEmailShown').textContent = (currentUser && currentUser.email) || '';
+  return need;
+}
+async function refreshVerified(){
+  if(!auth.currentUser) return false;
+  await reload(auth.currentUser);
+  currentUser = auth.currentUser;
+  if(currentUser.emailVerified){ await getIdToken(currentUser, true); }  // so the server sees the confirmed email
+  return !showVerifyBox();
+}
+$('btnVerifiedContinue').addEventListener('click', async ()=>{
+  $('storeErr').className='gate-err';
+  if(await refreshVerified()){ toast('Email confirmed'); await autoJoinInvitedStores(); await renderMyStores(); }
+  else { $('storeErr').textContent="We can't see the confirmation yet — click the link in the email, then try again."; $('storeErr').classList.add('show'); }
+});
+$('btnResendVerify').addEventListener('click', async ()=>{
+  try{ await sendEmailVerification(auth.currentUser); toast('Email sent again — check spam too'); }
+  catch(e){ toast(friendlyAuthError(e), 'err'); }
+});
 $('btnCreateStore').addEventListener('click', async ()=>{
   const name = $('newStoreName').value.trim();
+  const abn = $('newStoreAbn').value.trim();
   $('storeErr').className='gate-err';
-  if(!name){ $('storeErr').textContent='Enter a store name.'; $('storeErr').classList.add('show'); return; }
-  const code = uid6();
+  const fail = msg => { $('storeErr').textContent = msg; $('storeErr').classList.add('show'); };
+  if(!name) return fail('Enter your store name.');
+  if(!abnLooksValid(abn)) return fail("That ABN doesn't look right — check the 11 digits.");
+  if(!currentUser.emailVerified && !(await refreshVerified())) return fail('Please confirm your email first — use the link we sent you.');
+  $('btnCreateStore').disabled = true;
   try{
-    await setDoc(doc(db,'stores',code), { name, ownerUid: currentUser.uid, members:[currentUser.uid], createdAt: Date.now() });
-    await setDoc(doc(db,'stores',code,'memberInfo',currentUser.uid), { email: currentUser.email, joinedAt: Date.now() });
-    enterStore(code);
+    const res = await httpsCallable(fns, 'startTrial')({ storeName: name, abn, deviceId: deviceId() });
+    const r = res.data || {};
+    if(r.status==='trialing') toast('Your 30-day free trial has started');
+    enterStore(r.code);
   }catch(e){
-    $('storeErr').textContent = e.message; $('storeErr').classList.add('show');
+    fail(e.message || 'Could not start your store — please try again.');
+  }finally{
+    $('btnCreateStore').disabled = false;
   }
 });
 $('btnJoinStore').addEventListener('click', async ()=>{
   const code = $('joinStoreCode').value.trim().toUpperCase();
   $('storeErr').className='gate-err';
   if(!code){ $('storeErr').textContent='Enter a store code.'; $('storeErr').classList.add('show'); return; }
+  if(!currentUser.emailVerified && !(await refreshVerified())){ $('storeErr').textContent='Please confirm your email first — use the link we sent you.'; $('storeErr').classList.add('show'); return; }
   try{
-    const snap = await getDoc(doc(db,'stores',code));
+    let snap;
+    try{ snap = await getDoc(doc(db,'stores',code)); }
+    catch(err){ $('storeErr').textContent="That store hasn't invited "+currentUser.email+" — ask its owner to add your email under Staff / members → Invite another owner."; $('storeErr').classList.add('show'); return; }
     if(!snap.exists()){ $('storeErr').textContent='No store found with that code.'; $('storeErr').classList.add('show'); return; }
     const members = snap.data().members || [];
     if(!members.includes(currentUser.uid)){
-      await updateDoc(doc(db,'stores',code), { members: arrayUnion(currentUser.uid) });
+      await updateDoc(doc(db,'stores',code), { members: arrayUnion(currentUser.uid), invitedEmails: arrayRemove((currentUser.email||'').toLowerCase()) });
     }
     await setDoc(doc(db,'stores',code,'memberInfo',currentUser.uid), { email: currentUser.email, joinedAt: Date.now() }, {merge:true});
     enterStore(code);
@@ -1409,7 +1779,13 @@ $('btnSwitchStore').addEventListener('click', ()=>{
 });
 
 async function enterStore(code){
-  const snap = await getDoc(doc(db,'stores',code));
+  let snap;
+  try{ snap = await getDoc(doc(db,'stores',code)); }
+  catch(e){
+    if(isStaffSession){ localStorage.removeItem('shelfticket-staff-code'); localStorage.removeItem('shelfticket-staff-name'); $('mainApp').style.display='none'; $('gateStaff').style.display='flex'; }
+    else { localStorage.removeItem('shelfticket-store-code'); showStoreGate(true); }
+    toast("You don't have access to that store", 'err'); return;
+  }
   if(!snap.exists()){
     if(isStaffSession){ localStorage.removeItem('shelfticket-staff-code'); localStorage.removeItem('shelfticket-staff-name'); $('gateStaff').style.display='flex'; }
     else { localStorage.removeItem('shelfticket-store-code'); showStoreGate(); }
@@ -1444,10 +1820,85 @@ async function enterStore(code){
   }
   $('gateStore').style.display='none';
   $('gateStaff').style.display='none';
-  $('mainApp').style.display='block';
+  currentStoreData = data;
+  if(unsubStoreDoc) unsubStoreDoc();
+  // Live: when a subscription starts (or an admin changes the plan) the
+  // app unlocks or locks itself without a refresh.
+  unsubStoreDoc = onSnapshot(doc(db,'stores',code), s=>{
+    if(!s.exists() || storeCode!==code) return;
+    currentStoreData = s.data();
+    applyPlanState();
+  }, ()=>{});
   attachListeners();
   loadSettingsLocal();
+  applyPlanState();
 }
+// Shows the trial badge, or swaps the app for the payment page once the
+// trial is over. The database enforces the same rule, so this is the
+// friendly face of it, not the lock itself.
+function applyPlanState(){
+  const st = planState(currentStoreData);
+  const isMember = !!(currentStoreData && (currentStoreData.members||[]).includes(currentUser && currentUser.uid));
+  const badge = $('planBadge');
+  const bill = (currentStoreData && currentStoreData.billing) || {};
+  const canManage = !isStaffSession && !!bill.customerId;
+  if(st.status==='trialing'){
+    badge.style.display = '';
+    badge.className = 'plan-badge ' + (st.daysLeft<=5 ? 'urgent' : 'trial');
+    badge.textContent = st.label + (isStaffSession ? '' : ' · Subscribe');
+    badge.onclick = isStaffSession ? null : ()=> startCheckout();
+  } else if(st.status==='active' && bill.status==='past_due'){
+    badge.style.display = ''; badge.className = 'plan-badge urgent';
+    badge.textContent = isStaffSession ? 'Payment problem — tell the owner' : 'Payment failed · update card';
+    badge.onclick = canManage ? ()=> openBillingPortal() : null;
+  } else if(st.status==='active' && bill.cancelAtPeriodEnd && bill.currentPeriodEnd){
+    badge.style.display = ''; badge.className = 'plan-badge trial';
+    badge.textContent = 'Subscription ends ' + new Date(bill.currentPeriodEnd).toLocaleDateString(undefined,{day:'numeric',month:'short'}) + (canManage ? ' · Renew' : '');
+    badge.onclick = canManage ? ()=> openBillingPortal() : null;
+  } else if(st.status==='active' || st.status==='comped'){
+    badge.style.display = ''; badge.className = 'plan-badge paid';
+    badge.textContent = st.label + (canManage ? ' · Manage' : '');
+    badge.onclick = canManage ? ()=> openBillingPortal() : null;
+    badge.style.cursor = canManage ? 'pointer' : 'default';
+  } else {
+    badge.style.display = 'none';
+  }
+  const lock = st.locked && !isAdminUser;
+  if(lock){
+    $('paywallTitle').textContent = st.status==='payment_required' ? 'Subscribe to start using Vayora Tickets' : 'Your free trial has ended';
+    $('paywallSub').textContent = st.status==='payment_required'
+      ? 'A free trial has already been used by this business, account, device or internet connection, so this store starts on a subscription. Everything you set up is kept.'
+      : 'Subscribe to keep scanning, importing and printing. Your catalog, print queue and saved batches are kept safe.';
+    $('paywallStore').textContent = (currentStoreData && currentStoreData.name) || '';
+    $('paywallCode').textContent = storeCode || '';
+    $('btnSubscribe').href = STRIPE_ENABLED ? '#' : subscribeHref();
+    $('btnSubscribe').target = STRIPE_ENABLED ? '_self' : '_blank';
+    $('btnSubscribe').onclick = STRIPE_ENABLED ? (ev)=>{ ev.preventDefault(); startCheckout($('btnSubscribe')); } : null;
+    $('btnSubscribe').style.display = isStaffSession ? 'none' : '';
+    $('paywallStaffNote').style.display = isStaffSession ? '' : 'none';
+    $('paywallContact').href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Vayora Tickets — store '+(storeCode||''))}`;
+    $('mainApp').style.display = 'none';
+    $('gatePaywall').style.display = 'flex';
+  } else {
+    $('gatePaywall').style.display = 'none';
+    $('mainApp').style.display = 'block';
+  }
+}
+// Back from Stripe: the store unlocks by itself as soon as Stripe confirms
+// the payment (usually a few seconds) — the plan listener picks it up.
+(function(){
+  const q = new URLSearchParams(location.search).get('checkout');
+  if(!q) return;
+  history.replaceState(null, '', location.pathname);
+  setTimeout(()=>{
+    if(q==='success') toast('Payment received — thank you! Unlocking your store…');
+    else toast('Checkout cancelled — no payment was taken.');
+  }, 800);
+})();
+// A trial can run out while the app is open — re-check every 10 minutes.
+setInterval(()=>{ if(storeCode && currentStoreData) applyPlanState(); }, 10*60*1000);
+$('btnPaywallSwitch').addEventListener('click', ()=>{ $('gatePaywall').style.display='none'; $('btnSwitchStore').click(); });
+$('btnPaywallSignOut').addEventListener('click', ()=>{ $('gatePaywall').style.display='none'; $('btnSignOut').click(); });
 $('storeCodePill').addEventListener('click', ()=>{
   navigator.clipboard?.writeText(storeCode);
   toast('Store code copied — share it with your team');
@@ -1489,10 +1940,15 @@ $('btnMembers').addEventListener('click', async ()=>{
   list.innerHTML = '<p class="hint">Loading…</p>';
   const isOwnerOfThisStore = currentUser.uid === currentStoreOwnerUid;
   $('dangerZone').style.display = isAdminUser ? 'block' : 'none';
+  $('planAdminWrap').style.display = isAdminUser ? 'block' : 'none';
+  $('inviteOwnerWrap').style.display = isStaffSession ? 'none' : 'block';
+  renderPlanAdmin();
+  renderBillingBox();
   try{
     const snap = await getDoc(doc(db,'stores',storeCode));
     const members = snap.data().members || [];
     const invitedEmails = snap.data().invitedEmails || [];
+    renderPendingInvites(invitedEmails);
     const infoSnap = await getDocs(collection(db,'stores',storeCode,'memberInfo'));
     const info = {};
     infoSnap.forEach(d=> info[d.id] = d.data());
@@ -1564,6 +2020,91 @@ $('btnMembers').addEventListener('click', async ()=>{
   }
 });
 
+function renderPendingInvites(emails){
+  const box = $('pendingInvites');
+  box.innerHTML = '';
+  emails.forEach(em=>{
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    row.innerHTML = `<div class="who"><b>${escapeHtml(em)}<span class="status-chip">INVITED</span></b><span>Waiting for them to join with code ${escapeHtml(storeCode)}</span></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn ghost'; btn.style.color = 'var(--red)'; btn.textContent = 'Cancel';
+    btn.addEventListener('click', async ()=>{
+      try{ await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayRemove(em) }); $('btnMembers').click(); }
+      catch(e){ toast('Could not cancel: '+e.message, 'err'); }
+    });
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+}
+$('btnInviteOwner').addEventListener('click', async ()=>{
+  const em = $('inviteOwnerEmail').value.trim().toLowerCase();
+  if(!em || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ toast('Enter a valid email', 'err'); return; }
+  try{
+    await updateDoc(doc(db,'stores',storeCode), { invitedEmails: arrayUnion(em) });
+    $('inviteOwnerEmail').value = '';
+    toast(`Invited ${em} — give them the store code ${storeCode}`);
+    $('btnMembers').click();
+  }catch(e){ toast('Could not invite: '+e.message, 'err'); }
+});
+function renderBillingBox(){
+  const wrap = $('billingWrap');
+  if(isStaffSession || !STRIPE_ENABLED){ wrap.style.display = 'none'; return; }
+  const d = currentStoreData || {}, bill = d.billing || {}, st = planState(d);
+  const btn = $('btnBillingAction');
+  wrap.style.display = 'block';
+  btn.disabled = false;
+  if(st.status==='comped' || st.status==='legacy'){
+    $('billingInfo').textContent = 'This store is on a complimentary plan — nothing to pay.';
+    btn.style.display = 'none'; return;
+  }
+  btn.style.display = '';
+  if(bill.customerId && st.status==='active'){
+    const end = bill.currentPeriodEnd ? new Date(bill.currentPeriodEnd).toLocaleDateString() : '';
+    $('billingInfo').textContent = bill.status==='past_due' ? 'Your last payment failed — please update your card.'
+      : bill.cancelAtPeriodEnd ? `Cancelled — access continues until ${end}.`
+      : `Subscribed${end ? ' · next payment ' + end : ''}. Update your card, download invoices or cancel any time.`;
+    btn.textContent = 'Manage subscription & invoices';
+    btn.dataset.label = btn.textContent;
+    btn.onclick = ()=> openBillingPortal(btn);
+  } else {
+    $('billingInfo').textContent = st.status==='trialing' ? `Free trial — ${st.daysLeft} day${st.daysLeft===1?'':'s'} left. ${bill.everSubscribed ? '' : 'Launch offer: A$10/month for your first 3 months, then A$25/month.'}`
+      : 'Subscribe to keep using Vayora Tickets. A$25/month per store.';
+    btn.textContent = 'Subscribe';
+    btn.dataset.label = btn.textContent;
+    btn.onclick = ()=> startCheckout(btn);
+  }
+}
+function renderPlanAdmin(){
+  if(!isAdminUser) return;
+  const d = currentStoreData || {};
+  const p = d.plan || {};
+  const st = planState(d);
+  const bits = [`Status: <b>${escapeHtml(st.label || 'Legacy (free)')}</b>`];
+  if(p.trialEndsAt) bits.push(`trial ends ${new Date(p.trialEndsAt).toLocaleDateString()}`);
+  if(d.abn) bits.push(`ABN ${escapeHtml(d.abn)}`);
+  if((d.flags||[]).length) bits.push(`<span class="flag-chip">${escapeHtml(d.flags.join(', ').toUpperCase())}</span>`);
+  $('planAdminInfo').innerHTML = bits.join(' · ');
+}
+document.querySelectorAll('#planAdminWrap [data-plan]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const p = Object.assign({}, (currentStoreData && currentStoreData.plan) || {});
+    const now = Date.now(), act = btn.dataset.plan;
+    let plan;
+    if(act==='trial30') plan = { status:'trialing', trialStartedAt: now, trialEndsAt: now + TRIAL_DAYS*864e5 };
+    else if(act==='extend14') plan = { ...p, status:'trialing', trialStartedAt: p.trialStartedAt||now, trialEndsAt: Math.max(p.trialEndsAt||0, now) + 14*864e5 };
+    else if(act==='active') plan = { ...p, status:'active', paidSince: p.paidSince || now };
+    else if(act==='comped') plan = { ...p, status:'comped' };
+    else plan = { ...p, status:'payment_required' };
+    try{
+      await updateDoc(doc(db,'stores',storeCode), { plan });
+      toast('Plan updated');
+      currentStoreData = Object.assign({}, currentStoreData, { plan });
+      renderPlanAdmin();
+    }catch(e){ toast('Could not update plan: '+e.message, 'err'); }
+  });
+});
+
 $('btnDeleteStore').addEventListener('click', async ()=>{
   const name = $('activeStoreName').textContent;
   const typed = prompt(`This permanently deletes "${name}" and everything in it — catalog, print queue, and every saved batch. This cannot be undone.\n\nType the store's name exactly to confirm:`);
@@ -1596,6 +2137,9 @@ $('btnDeleteStore').addEventListener('click', async ()=>{
 });
 
 function leaveStoreListeners(){
+  if(unsubStoreDoc){ unsubStoreDoc(); unsubStoreDoc = null; }
+  currentStoreData = null;
+  $('gatePaywall').style.display = 'none';
   if(unsubProducts) unsubProducts();
   if(unsubQueue) unsubQueue();
   if(unsubBatches) unsubBatches();
@@ -1714,8 +2258,8 @@ $('searchBox').addEventListener('input', renderTable);
 
 /* ===================== Print queue ===================== */
 function typeConfig(type){
-  if(type==='a7') return {cols:2, rows:4, cls:'type-promoA7', label:'A7 promo', fixed:false};
-  if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false};
+  if(type==='a7') return {cols:4, rows:2, cls:'type-promoA7', label:'A7 promo', fixed:false, cut:true, landscape:true};
+  if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false, cut:true};
   if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo', fixed:false};
   if(settings.paperPreset && settings.paperPreset!=='plain'){
     return {
@@ -2069,7 +2613,7 @@ async function previewBatch(b){
     $('previewInner').innerHTML = buildPagesHtml(list);
     renderBarcodes($('previewInner'));
     openModal('overlayPreview');
-    requestAnimationFrame(scalePreviewPages);
+    requestAnimationFrame(()=>{ fitAllTickets($('previewInner')); scalePreviewPages(); });
   }catch(e){ toast('Could not load batch: '+e.message, 'err'); }
 }
 
@@ -2494,7 +3038,8 @@ $('btnAdminCreateSubmit').addEventListener('click', async ()=>{
     let code = null;
     if(storeName){
       code = uid6();
-      await setDoc(doc(db,'stores',code), { name: storeName, ownerUid: newUid, members:[newUid], createdAt: Date.now() });
+      await setDoc(doc(db,'stores',code), { name: storeName, ownerUid: newUid, members:[newUid], createdAt: Date.now(),
+        plan: { status:'trialing', trialStartedAt: Date.now(), trialEndsAt: Date.now() + TRIAL_DAYS*864e5 }, flags: ['admin-created'] });
       await setDoc(doc(db,'stores',code,'memberInfo',newUid), { email, joinedAt: Date.now() });
     }
     try{ await sendPasswordResetEmail(auth, email); }catch(e){ /* setup code works regardless of whether email delivers */ }
@@ -2553,7 +3098,7 @@ $('btnPrintAlignTest').addEventListener('click', ()=>{
   });
   const prevSettings = settings;
   settings = tempSettings;
-  $('printArea').innerHTML = buildAlignmentTestHtml();
+  renderPrintArea(null, buildAlignmentTestHtml());
   window.print();
   settings = prevSettings;
 });
@@ -2804,23 +3349,102 @@ function buildPagesHtml(list){
     const perPage = cfg.cols * cfg.rows;
     for(let i=0;i<items.length;i+=perPage){
       const chunk = items.slice(i, i+perPage);
-      const cells = chunk.map(ticketHtml).join('');
       const filler = perPage - chunk.length;
-      const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
       if(cfg.fixed){
         // Exact-mm mode for pre-cut/perforated stock: cell size and gaps are
         // fixed physical values (not evenly divided across the page), and
         // any leftover space is simply left blank — same as a real sheet.
-        const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm ${cfg.marginTop}mm ${cfg.marginLeft+cfg.offsetX}mm;`;
+        // Tall, narrow cells (e.g. 24×80mm) get the ticket turned 90° so it
+        // is laid out as a normal landscape tag instead of a squashed column.
+        const rotate = cfg.ticketH > cfg.ticketW * 1.6;
+        const cellHtml = p => rotate
+          ? `<div class="rot-cell">${ticketHtml(p).replace('<div class="ticket', `<div style="width:${cfg.ticketH}mm;height:${cfg.ticketW}mm;transform:translateY(${cfg.ticketH}mm) rotate(-90deg);" class="ticket`)}</div>`
+          : ticketHtml(p);
+        const cells = chunk.map(cellHtml).join('');
+        const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div></div>').join('') : '';
+        const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm 0 ${cfg.marginLeft+cfg.offsetX}mm;`;
         const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
         html += `<div class="page-frame"><div class="page" style="${pageStyle}"><div class="ticket-grid ${cfg.cls}" style="${gridStyle}">${cells}${fillerHtml}</div></div></div>`;
+      } else if(cfg.cut){
+        // True-size A7 / A5: cells tile the whole sheet with no margin or gap,
+        // so cutting on the dashed lines gives real A-series tickets. Content
+        // sits inside each ticket's own padding, clear of the printer's
+        // unprintable edge.
+        const cells = chunk.map(ticketHtml).join('');
+        const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
+        let cuts = '';
+        for(let c=1;c<cfg.cols;c++) cuts += `<div class="cut-line v" style="left:${(c*100/cfg.cols).toFixed(4)}%"></div>`;
+        for(let r=1;r<cfg.rows;r++) cuts += `<div class="cut-line h" style="top:${(r*100/cfg.rows).toFixed(4)}%"></div>`;
+        const frameCls = cfg.landscape ? 'page-frame pf-landscape' : 'page-frame';
+        html += `<div class="${frameCls}"><div class="page page-cut"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div>${cuts}</div></div>`;
       } else {
-        const frameClass = cfg.landscape ? 'page-frame pf-landscape' : 'page-frame';
-        html += `<div class="${frameClass}"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
+        const cells = chunk.map(ticketHtml).join('');
+        const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
+        html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
       }
     }
   });
   return html;
+}
+// Shrinks a ticket's text until everything fits inside it, so a long product
+// name or a small paper preset never pushes the price or barcode off the
+// ticket. Steps: scale fonts down → drop optional lines (expiry, sale dates,
+// meta chips, promo label) → clamp the name to 2 lines. Uses layout metrics
+// only (scrollHeight/offsetWidth), so it works inside the scaled preview too.
+const FIT_TEXT_SEL = '.t-name,.t-cat,.t-bay,.t-qty,.t-price,.t-mrp,.t-exp,.t-sale-dates,.t-offer-banner,.t-promo-label,.t-barcode-num';
+function ticketOverflows(t){
+  if(t.scrollHeight > t.clientHeight + 1 || t.scrollWidth > t.clientWidth + 1) return true;
+  const cs = getComputedStyle(t);
+  const avail = t.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const price = t.querySelector('.t-price');
+  if(price && price.scrollWidth > avail + 1) return true;
+  for(const el of t.querySelectorAll('.t-name,.t-offer-banner,.t-promo-label')){
+    if(el.scrollWidth > el.clientWidth + 1) return true;
+  }
+  return false;
+}
+function fitTicket(t){
+  if(!t.clientHeight || !t.querySelector('.t-name')) return;
+  const els = Array.from(t.querySelectorAll(FIT_TEXT_SEL));
+  const base = els.map(el => parseFloat(getComputedStyle(el).fontSize));
+  const svg = t.querySelector('svg.barcode-svg');
+  const svgH = svg ? parseFloat(svg.getAttribute('height')) || 0 : 0;
+  const apply = f => {
+    els.forEach((el,i)=>{ el.style.fontSize = (base[i]*f).toFixed(2)+'px'; });
+    if(svg && svgH) svg.style.height = (svgH * Math.max(f, 0.6)).toFixed(1)+'px';
+  };
+  const steps = [1,.92,.85,.78,.72,.66,.6,.55,.5];
+  const tryFit = () => { for(const f of steps){ apply(f); if(!ticketOverflows(t)) return true; } return false; };
+  if(tryFit()) return;
+  for(const sel of ['.t-exp','.t-sale-dates','.t-meta','.t-promo-label']){
+    t.querySelectorAll(sel).forEach(el=> el.style.display='none');
+    if(tryFit()) return;
+  }
+  const name = t.querySelector('.t-name');
+  Object.assign(name.style, {display:'-webkit-box', webkitLineClamp:'2', webkitBoxOrient:'vertical', overflow:'hidden'});
+  tryFit();
+}
+function fitAllTickets(root){
+  root.querySelectorAll('.ticket').forEach(fitTicket);
+}
+// Lays out the print area off-screen (it's display:none on screen) so the
+// barcodes and fit pass can measure real sizes, then hides it again. The
+// print stylesheet shows it at print time with those sizes already applied.
+function setPrintPageSize(area){
+  const frames = area.querySelectorAll('.page-frame');
+  const allLandscape = frames.length > 0 && Array.from(frames).every(f=>f.classList.contains('pf-landscape'));
+  let st = document.getElementById('vtPageSize');
+  if(!st){ st = document.createElement('style'); st.id = 'vtPageSize'; document.head.appendChild(st); }
+  st.textContent = allLandscape ? '@media print{@page{size:A4 landscape;margin:0;}}' : '';
+}
+function renderPrintArea(list, html){
+  const area = $('printArea');
+  area.innerHTML = html != null ? html : buildPagesHtml(list);
+  setPrintPageSize(area);
+  Object.assign(area.style, {display:'block', position:'absolute', left:'-10000px', top:'0', visibility:'hidden'});
+  renderBarcodes(area);
+  fitAllTickets(area);
+  Object.assign(area.style, {display:'', position:'', left:'', top:'', visibility:''});
 }
 function buildAlignmentTestHtml(){
   const cfg = typeConfig('shelf');
@@ -2846,6 +3470,18 @@ function buildAlignmentTestHtml(){
     <div style="${gridStyle}">${cells}</div>
   </div></div>`;
 }
+function barcodeFormat(code){
+  // Real product barcodes (EAN-13 / UPC-A / EAN-8 with a valid check digit)
+  // print in their own symbology — that's what every POS scanner expects, and
+  // it's narrower than CODE128 for the same digits, so bars stay thicker on
+  // small tags. Anything else (internal codes, letters) falls back to CODE128.
+  if(!/^\d+$/.test(code)) return 'CODE128';
+  const ok = c => { const d=c.split('').map(Number), chk=d.pop(); let s=0; d.reverse().forEach((n,i)=>{ s += n*(i%2===0?3:1); }); return (10 - s%10)%10 === chk; };
+  if(code.length===13 && ok(code)) return 'EAN13';
+  if(code.length===12 && ok(code)) return 'UPC';
+  if(code.length===8 && ok(code)) return 'EAN8';
+  return 'CODE128';
+}
 function renderBarcodes(root){
   root.querySelectorAll('.barcode-svg').forEach(svg=>{
     const code = svg.dataset.code;
@@ -2857,11 +3493,16 @@ function renderBarcodes(root){
     // the problem entirely.
     const type = svg.dataset.type || 'shelf';
     const opts = type==='a4' ? {height:60, width:2.2}
-      : type==='a5' ? {height:40, width:1.6}
-      : type==='a7' ? {height:24, width:1.1}
-      : {height:22, width:1};
-    try{ JsBarcode(svg, code, { format:'CODE128', displayValue:false, margin:0, ...opts }); }
-    catch(e){ try{ JsBarcode(svg, code, { format:'CODE39', displayValue:false, margin:0, ...opts }); }catch(e2){} }
+      : type==='a5' ? {height:44, width:1.6}
+      : type==='a7' ? {height:28, width:1.2}
+      : {height:22, width:1.25};
+    const fmt = barcodeFormat(code);
+    try{ JsBarcode(svg, code, { format:fmt, displayValue:false, margin:0, flat:true, ...opts }); }
+    catch(e){ try{ JsBarcode(svg, code, { format:'CODE128', displayValue:false, margin:0, ...opts }); }catch(e2){ return; } }
+    // Lets the fit pass shorten the bars without squeezing them sideways.
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.width = svg.getAttribute('width');
+    svg.style.maxWidth = '100%';
   });
 }
 // The ticket page is built at true A4 size (210mm ≈ 794px) so print output is
@@ -2902,14 +3543,13 @@ $('btnPreview').addEventListener('click', ()=>{
   renderBarcodes($('previewInner'));
   openModal('overlayPreview');
   // Sizes are only knowable once the modal is actually laid out on screen,
-  // so scale on the next frame rather than immediately.
-  requestAnimationFrame(scalePreviewPages);
+  // so fit + scale on the next frame rather than immediately.
+  requestAnimationFrame(()=>{ fitAllTickets($('previewInner')); scalePreviewPages(); });
 });
 $('btnDoPrint').addEventListener('click', ()=>{
   const list = currentPreviewList.length ? currentPreviewList : buildTicketList();
   if(!list.length){ toast('Nothing to print', 'err'); return; }
-  $('printArea').innerHTML = buildPagesHtml(list);
-  renderBarcodes($('printArea'));
+  renderPrintArea(list);
   // Must run synchronously, in the same tap — iOS Safari silently ignores
   // window.print() if it's deferred (even by a few ms via setTimeout),
   // since it no longer counts as a direct response to your tap.
