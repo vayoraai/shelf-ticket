@@ -61,6 +61,11 @@ button{font-family:inherit;} input,select,textarea{font-family:inherit;}
 .plan-badge.paid{background:#d9efe1;color:#1f5c41;cursor:default;}
 .flag-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;margin-left:5px;background:#f6d3cf;color:#9b2c22;font-family:Inter,sans-serif;}
 .status-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;margin-left:5px;background:#eef2fb;color:#3a4d8f;font-family:Inter,sans-serif;}
+.ref-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
+.ref-stats div{background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;}
+.ref-stats b{display:block;font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--green-900);}
+.ref-stats span{font-size:11px;color:var(--ink-soft);}
+.ref-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:20px;margin-left:5px;background:#e6f0e8;color:#1f5c41;font-family:Inter,sans-serif;}
 .price-box{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0;text-align:center;}
 .price-box .big{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;color:var(--green-900);}
 .price-box .small{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
@@ -411,7 +416,7 @@ tbody tr.flash{animation:flashRow .9s;}
       <div class="field"><label>Store name</label><input id="newStoreName" placeholder="e.g. Green Valley Grocers"></div>
       <div class="field"><label>ABN</label><input id="newStoreAbn" inputmode="numeric" placeholder="11 digits, e.g. 51 824 753 556"></div>
       <button class="btn primary" style="width:100%;justify-content:center;" id="btnCreateStore">Start 30-day free trial</button>
-      <p class="hint" style="margin-top:8px;">One free trial per business. No card needed. Then A$25/month — launch offer A$10/month for your first 3 months.</p>
+      <p class="hint" style="margin-top:8px;" id="createTrialHint">One free trial per business. No card needed. Then A$25/month — launch offer A$10/month for your first 3 months.</p>
     </div>
     <div id="storeJoinPane" style="display:none;">
       <p class="hint" style="margin-bottom:10px;">If another owner of the store invited your email, enter their store code. (Staff don't need an account — they use "I'm on staff" on the sign-in screen.)</p>
@@ -435,6 +440,7 @@ tbody tr.flash{animation:flashRow .9s;}
     </div>
     <a class="btn primary" id="btnSubscribe" style="width:100%;justify-content:center;text-decoration:none;" href="#">Subscribe</a>
     <p class="hint" id="paywallStaffNote" style="display:none;text-align:center;margin-top:10px;">Only the store owner can subscribe — please let them know.</p>
+    <button class="btn ghost" id="btnPaywallRefer" style="width:100%;justify-content:center;margin-top:8px;">🎁 Refer a store — earn free months</button>
     <p class="hint" style="text-align:center;margin-top:10px;" id="paywallHelp">Store: <b id="paywallStore"></b> · Code <span id="paywallCode" style="font-family:'IBM Plex Mono',monospace;"></span><br>Think this is a mistake? <a id="paywallContact" href="#" style="color:var(--green-700);font-weight:600;">Contact us</a></p>
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn ghost" style="flex:1;justify-content:center;" id="btnPaywallSwitch">Switch store</button>
@@ -475,6 +481,7 @@ tbody tr.flash{animation:flashRow .9s;}
       Scanning as <b id="staffTagName"></b>
       <button id="btnSwitchName">Not you?</button>
     </div>
+    <button class="btn" id="btnReferStore" style="display:none;">🎁 Refer a store</button>
     <button class="btn" id="btnMembers">Staff / members</button>
     <button class="btn" id="btnSwitchStore">Switch / join store</button>
     <button class="btn danger-out" id="btnLeaveStore">Leave store</button>
@@ -948,6 +955,31 @@ tbody tr.flash{animation:flashRow .9s;}
   </div>
 </div>
 
+<!-- ============ Refer a store ============ -->
+<div class="overlay" id="overlayReferStore" style="z-index:400;">
+  <div class="modal">
+    <div class="modal-head"><h2>🎁 Refer a store</h2><button class="icon-btn" data-close="overlayReferStore">✕</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin:0 0 12px;font-size:13px;line-height:1.55;">Know another shop that prints price tickets? Send them your link. They get a <b>60-day free trial</b> (instead of 30). When they pay for their subscription, <b>you get a free month</b> — <span id="referRewardHow"></span></p>
+      <div class="field"><label>Your store's referral link</label>
+        <div style="display:flex;gap:6px;"><input id="referStoreLink" readonly style="flex:1;"><button class="btn" id="btnCopyReferStore">Copy</button></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <a class="btn" id="referStoreWa" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn" id="referStoreSms">Text message</a>
+        <a class="btn" id="referStoreEmail">Email</a>
+      </div>
+      <div class="ref-stats">
+        <div><b id="refJoined">0</b><span>stores joined through you</span></div>
+        <div><b id="refPaid">0</b><span>of them subscribed</span></div>
+        <div><b id="refMonths">0</b><span>free months earned</span></div>
+      </div>
+      <p class="hint" id="refPendingNote" style="display:none;"></p>
+      <p class="hint">Up to 12 free months a year. A reward is taken back if the referred store's payment is refunded within 30 days.</p>
+    </div>
+  </div>
+</div>
+
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
@@ -1230,6 +1262,23 @@ $('authTabSignIn').addEventListener('click', ()=> setAuthMode('signin'));
 $('authTabSignUp').addEventListener('click', ()=> setAuthMode('signup'));
 // Links from the website (tickets.vayora.au/?signup=1) open straight on "Start free trial".
 if(new URLSearchParams(location.search).get('signup') === '1') setAuthMode('signup');
+// Referral links (?ref=STORECODE, or F… from the download version): kept for
+// 30 days so it survives email confirmation, then sent with startTrial.
+(function(){
+  const r = (new URLSearchParams(location.search).get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(/^([A-Z0-9]{6}|F[A-Z0-9]{7})$/.test(r)){ try{ localStorage.setItem('vt-ref', JSON.stringify({ code: r, at: Date.now() })); }catch(e){} }
+})();
+function pendingRef(){
+  try{ const v = JSON.parse(localStorage.getItem('vt-ref') || 'null'); if(v && Date.now() - v.at < 30*864e5) return v.code; }catch(e){}
+  return '';
+}
+function applyRefCopy(){
+  if(!pendingRef()) return;
+  $('authTrialNote').textContent = 'Referred by another store: 60 days free, no card needed. Then A$25/month — launch offer A$10/month for your first 3 months.';
+  $('btnCreateStore').textContent = 'Start 60-day free trial';
+  $('createTrialHint').textContent = 'You were referred by another store, so your free trial is 60 days. One free trial per business. No card needed.';
+}
+applyRefCopy();
 
 $('btnAuthSubmit').addEventListener('click', async ()=>{
   const email = $('authEmail').value.trim();
@@ -1454,7 +1503,10 @@ async function renderAdminStores(){
       const st = planState(data);
       const chip = st.label ? `<span class="status-chip">${escapeHtml(st.label.toUpperCase())}</span>` : '';
       const flags = (data.flags||[]).length ? `<span class="flag-chip">⚑ ${escapeHtml(data.flags.join(', ').replace(/repeat-/g,'repeat ').toUpperCase())}</span>` : '';
-      row.innerHTML = `<b>${escapeHtml(data.name)}${chip}${flags}</b><span>${d.id} · ${(data.members||[]).length} member(s)</span>`;
+      const rs = data.referralStats || {};
+      const refBy = data.referral ? `<span class="ref-chip" title="Referral status: ${escapeHtml(data.referral.status)}">VIA ${escapeHtml(data.referral.by)} · ${escapeHtml(String(data.referral.status).toUpperCase())}</span>` : '';
+      const refs = rs.joined ? `<span class="ref-chip">🎁 ${rs.joined} REFERRED · ${rs.paid||0} PAID</span>` : '';
+      row.innerHTML = `<b>${escapeHtml(data.name)}${chip}${flags}${refBy}${refs}</b><span>${d.id} · ${(data.members||[]).length} member(s)</span>`;
       row.addEventListener('click', ()=> enterStore(d.id));
       list.appendChild(row);
     });
@@ -1727,9 +1779,10 @@ $('btnCreateStore').addEventListener('click', async ()=>{
   if(!currentUser.emailVerified && !(await refreshVerified())) return fail('Please confirm your email first — use the link we sent you.');
   $('btnCreateStore').disabled = true;
   try{
-    const res = await httpsCallable(fns, 'startTrial')({ storeName: name, abn, deviceId: deviceId() });
+    const res = await httpsCallable(fns, 'startTrial')({ storeName: name, abn, deviceId: deviceId(), ref: pendingRef() || undefined });
     const r = res.data || {};
-    if(r.status==='trialing') toast('Your 30-day free trial has started');
+    try{ localStorage.removeItem('vt-ref'); }catch(e){}
+    if(r.status==='trialing') toast(`Your ${r.referral==='pending' ? 60 : 30}-day free trial has started`);
     enterStore(r.code);
   }catch(e){
     fail(e.message || 'Could not start your store — please try again.');
@@ -1812,11 +1865,13 @@ async function enterStore(code){
     $('btnLeaveStore').style.display = '';
     $('btnLeaveStore').textContent = 'Leave (this device)';
     $('btnMembers').style.display = 'none';   // staff manage nothing here
+    $('btnReferStore').style.display = 'none';
   } else {
     $('staffTag').style.display = 'none';
     $('btnLeaveStore').textContent = 'Leave store';
     $('btnLeaveStore').style.display = isMember ? '' : 'none';
     $('btnMembers').style.display = '';
+    $('btnReferStore').style.display = '';
   }
   $('gateStore').style.display='none';
   $('gateStaff').style.display='none';
@@ -1876,6 +1931,7 @@ function applyPlanState(){
     $('btnSubscribe').onclick = STRIPE_ENABLED ? (ev)=>{ ev.preventDefault(); startCheckout($('btnSubscribe')); } : null;
     $('btnSubscribe').style.display = isStaffSession ? 'none' : '';
     $('paywallStaffNote').style.display = isStaffSession ? '' : 'none';
+    $('btnPaywallRefer').style.display = isStaffSession ? 'none' : '';
     $('paywallContact').href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Vayora Tickets — store '+(storeCode||''))}`;
     $('mainApp').style.display = 'none';
     $('gatePaywall').style.display = 'flex';
@@ -1897,6 +1953,30 @@ function applyPlanState(){
 })();
 // A trial can run out while the app is open — re-check every 10 minutes.
 setInterval(()=>{ if(storeCode && currentStoreData) applyPlanState(); }, 10*60*1000);
+function openReferStore(){
+  const d = currentStoreData || {}, st = d.referralStats || {}, ps = planState(d), bill = d.billing || {};
+  const link = 'https://tickets.vayora.au/?signup=1&ref=' + storeCode;
+  const msg = `We use Vayora Tickets for our shelf price tickets and barcodes. Try it free for 60 days with this link: ${link}`;
+  $('referStoreLink').value = link;
+  $('referStoreWa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  $('referStoreSms').href = 'sms:?&body=' + encodeURIComponent(msg);
+  $('referStoreEmail').href = 'mailto:?subject=' + encodeURIComponent('Shelf tickets — 60 days free') + '&body=' + encodeURIComponent(msg);
+  $('referRewardHow').textContent = (ps.status==='active' && bill.customerId) ? 'A$25 comes off your next bill automatically.'
+    : ps.status==='trialing' ? 'while you\'re on your free trial, it adds 30 days to it.'
+    : 'it\'s saved as A$25 credit and comes off your bills once you subscribe.';
+  $('refJoined').textContent = st.joined || 0;
+  $('refPaid').textContent = st.paid || 0;
+  $('refMonths').textContent = st.monthsEarned || 0;
+  $('refPendingNote').style.display = st.pendingCredits ? '' : 'none';
+  $('refPendingNote').textContent = st.pendingCredits ? `${st.pendingCredits} free month${st.pendingCredits===1?'':'s'} (A$${25*st.pendingCredits}) waiting — applied automatically when you subscribe.` : '';
+  openModal('overlayReferStore');
+}
+$('btnReferStore').addEventListener('click', openReferStore);
+$('btnPaywallRefer').addEventListener('click', openReferStore);
+$('btnCopyReferStore').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText($('referStoreLink').value); }catch(e){ $('referStoreLink').select(); document.execCommand('copy'); }
+  toast('Link copied');
+});
 $('btnPaywallSwitch').addEventListener('click', ()=>{ $('gatePaywall').style.display='none'; $('btnSwitchStore').click(); });
 $('btnPaywallSignOut').addEventListener('click', ()=>{ $('gatePaywall').style.display='none'; $('btnSignOut').click(); });
 $('storeCodePill').addEventListener('click', ()=>{

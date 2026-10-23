@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1f5c41">
+<meta name="robots" content="noindex">
+<title>Vayora Tickets — Plus &amp; Lifetime</title>
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--green-900:#173d2e;--green-700:#1f5c41;--green-600:#2d7a52;--green-100:#e6f0e8;--cream:#faf7ef;--paper:#fff;--ink:#20241f;--ink-soft:#5c6459;--line:#e0dccd;--amber:#d97a1f;--amber-100:#fbe9d4;--red:#b3372c;}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:720px;margin:0 auto;padding:28px 16px 60px;}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;text-decoration:none;}
+.brand .mark{width:38px;height:38px;border-radius:9px;background:var(--green-700);display:flex;align-items:center;justify-content:center;}
+.brand b{font-family:'Space Grotesk',sans-serif;font-size:19px;color:var(--green-900);}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:26px 24px;box-shadow:0 1px 2px rgba(23,61,46,.06),0 4px 14px rgba(23,61,46,.08);}
+h1{font-family:'Space Grotesk',sans-serif;font-size:24px;color:var(--green-900);margin:0 0 6px;}
+.sub{color:var(--ink-soft);font-size:14px;line-height:1.55;margin:0 0 20px;}
+.tiers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.tier{border:2px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;background:var(--paper);text-align:left;font:inherit;color:inherit;}
+.tier.on{border-color:var(--green-600);background:var(--green-100);}
+.tier .t{font-weight:700;font-size:15px;color:var(--green-900);}
+.tier .p{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--green-900);margin:4px 0;}
+.tier .p small{font-size:12px;color:var(--ink-soft);font-weight:600;}
+.tier ul{margin:6px 0 0;padding-left:17px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:0 0 5px;text-transform:uppercase;letter-spacing:.03em;}
+input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit;outline:none;margin-bottom:14px;}
+input:focus{border-color:var(--green-600);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:11px 16px;border-radius:9px;font-size:14.5px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit;}
+.btn.primary{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.btn.primary:hover{background:var(--green-900);}
+.btn:disabled{opacity:.6;cursor:wait;}
+.wide{width:100%;}
+.err{display:none;background:#fbe4e1;color:var(--red);font-size:13px;padding:10px 12px;border-radius:8px;margin-bottom:14px;}
+.err.show{display:block;}
+.note{background:var(--green-100);border:1px solid #cfe2d5;color:var(--green-900);font-size:13px;line-height:1.55;padding:12px 14px;border-radius:10px;margin-bottom:16px;}
+.note.warn{background:var(--amber-100);border-color:#f0cfa6;color:#6b3d0d;}
+.key{width:100%;font:13px/1.45 'IBM Plex Mono',monospace;border:2px solid var(--green-600);border-radius:10px;padding:12px;background:#fbfdfb;resize:none;word-break:break-all;min-height:118px;margin-bottom:10px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;}
+.row .btn{flex:1;min-width:160px;}
+ol{padding-left:20px;line-height:1.7;font-size:14px;color:var(--ink);margin:16px 0 0;}
+.small{font-size:12.5px;color:var(--ink-soft);line-height:1.55;margin-top:14px;}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0;}
+.stats div{background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;}
+.stats b{display:block;font-family:'Space Grotesk',sans-serif;font-size:22px;color:var(--green-900);}
+.stats span{font-size:11.5px;color:var(--ink-soft);}
+[hidden]{display:none !important;}
+@media (max-width:560px){.tiers{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand" href="https://vayora.au/">
+    <span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L22 12L12 22L2 12L12 2Z" fill="#fff"/><circle cx="12" cy="8.2" r="2" fill="#1f5c41"/></svg></span>
+    <b>Vayora Tickets</b>
+  </a>
+
+  <!-- Buy -->
+  <div class="card" id="viewBuy" hidden>
+    <h1>Plus &amp; Lifetime</h1>
+    <p class="sub">For the free download of Vayora Tickets. Removes the "Printed free with Vayora Tickets" line and adds the extra features. Your licence key is shown straight after payment.</p>
+    <div class="note warn" id="cancelNote" hidden>Payment cancelled — nothing was charged.</div>
+    <div class="tiers">
+      <button class="tier" data-tier="plus" type="button"><div class="t">Plus</div><div class="p">A$49<small> / year</small></div>
+        <ul><li>No watermark</li><li>Your logo on tickets</li><li>Colour themes, saved layouts</li><li>Auto-backup · email support</li></ul></button>
+      <button class="tier on" data-tier="life" type="button"><div class="t">Lifetime</div><div class="p">A$99<small> once</small></div>
+        <ul><li>Everything in Plus, forever</li><li>Price-change import</li><li>Sale scheduling</li><li>Up to 3 store profiles</li></ul></button>
+    </div>
+    <div class="err" id="buyErr"></div>
+    <label for="buyName">Store name (goes on your licence)</label>
+    <input id="buyName" placeholder="e.g. Green Valley Grocers" maxlength="80" autocomplete="organization">
+    <label for="buyAbn">ABN (optional — shown on your tax invoice)</label>
+    <input id="buyAbn" inputmode="numeric" placeholder="11 digits">
+    <label for="buyEmail">Email (for your receipt)</label>
+    <input id="buyEmail" type="email" placeholder="you@store.com" autocomplete="email">
+    <button class="btn primary wide" id="btnBuy">Continue to secure payment</button>
+    <p class="small">Payments by Stripe. Prices in AUD incl. GST. Plus renews yearly — cancel any time from this page. Want staff logins and phone scanning instead? <a href="https://tickets.vayora.au/?signup=1">Try the online version free</a>.</p>
+  </div>
+
+  <!-- Working -->
+  <div class="card" id="viewBusy" hidden><h1 id="busyTitle">One moment…</h1><p class="sub" id="busyText">Getting your licence.</p></div>
+
+  <!-- Key -->
+  <div class="card" id="viewKey" hidden>
+    <h1 id="keyTitle">Your licence key</h1>
+    <p class="sub" id="keySub"></p>
+    <textarea class="key" id="keyText" readonly></textarea>
+    <div class="row">
+      <button class="btn primary" id="btnCopyKey">Copy key</button>
+      <button class="btn" id="btnSaveKey">Save as a file</button>
+    </div>
+    <ol>
+      <li>Open <b>Vayora Tickets</b> on your computer.</li>
+      <li>Click <b>⭐ Upgrade</b> (top right).</li>
+      <li>Paste the key into <b>Your licence</b> and click <b>Activate key</b>.</li>
+    </ol>
+    <p class="small" id="keyFoot">Keep this key somewhere safe (e.g. in your email). Lost it? Email <a href="mailto:vayora.ai@gmail.com">vayora.ai@gmail.com</a> with your store name.</p>
+  </div>
+
+  <!-- Referral rewards -->
+  <div class="card" id="viewClaim" hidden>
+    <h1>Your referral rewards</h1>
+    <p class="sub" id="claimSub"></p>
+    <div class="stats">
+      <div><b id="cJoined">0</b><span>stores joined</span></div>
+      <div><b id="cPaid">0</b><span>subscribed</span></div>
+      <div><b id="cMonths">0</b><span>reward months earned</span></div>
+    </div>
+    <p class="small">Each store you refer that subscribes earns you 3 months of Plus. Up to 12 a year. Send your link from <b>🎁 Refer a store</b> in the app.</p>
+  </div>
+
+  <!-- Error -->
+  <div class="card" id="viewErr" hidden>
+    <h1>Something's not right</h1>
+    <p class="sub" id="errText"></p>
+    <a class="btn" href="licence.html">Back</a>
+  </div>
+</div>
+
+<script>
+const FN = 'https://australia-southeast1-shelf-ticket.cloudfunctions.net/';
+const $ = id => document.getElementById(id);
+const views = ['viewBuy', 'viewBusy', 'viewKey', 'viewClaim', 'viewErr'];
+function show(id){ views.forEach(v => $(v).hidden = v !== id); }
+async function call(name, data){
+  const r = await fetch(FN + name, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) });
+  const j = await r.json().catch(() => ({}));
+  if(j.error){ const e = new Error(j.error.message || 'Something went wrong — please try again.'); e.status = j.error.status; throw e; }
+  if(!r.ok) throw new Error('Could not reach Vayora — check your internet connection and try again.');
+  return j.result;
+}
+function fmt(ms){ return new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }); }
+function showKey(res, title){
+  $('keyTitle').textContent = title || 'Your licence key';
+  $('keySub').textContent = (res.tier === 'life' ? 'Lifetime' : 'Plus') + ' — licensed to ' + res.name
+    + (res.tier === 'plus' && res.expiresAt ? '. Valid until ' + fmt(res.expiresAt) + ' — renews with your yearly payment.' : '. Never expires.');
+  $('keyText').value = res.key;
+  show('viewKey');
+}
+function fail(e){ $('errText').textContent = e.message || String(e); show('viewErr'); }
+
+$('btnCopyKey').onclick = async () => {
+  try{ await navigator.clipboard.writeText($('keyText').value); }catch(e){ $('keyText').select(); document.execCommand('copy'); }
+  $('btnCopyKey').textContent = 'Copied ✓'; setTimeout(() => $('btnCopyKey').textContent = 'Copy key', 1800);
+};
+$('btnSaveKey').onclick = () => {
+  const blob = new Blob(['Vayora Tickets licence key\n\n' + $('keyText').value + '\n\nOpen Vayora Tickets → ⭐ Upgrade → paste the key → Activate key.\n'], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Vayora Tickets licence key.txt'; a.click();
+};
+
+// ---- buy
+let tier = 'life';
+document.querySelectorAll('.tier').forEach(b => b.onclick = () => { tier = b.dataset.tier; document.querySelectorAll('.tier').forEach(x => x.classList.toggle('on', x === b)); });
+$('btnBuy').onclick = async () => {
+  const err = $('buyErr'); err.classList.remove('show');
+  $('btnBuy').disabled = true; $('btnBuy').textContent = 'Opening secure payment page…';
+  try{
+    const r = await call('buyLicence', { tier, name: $('buyName').value, abn: $('buyAbn').value, email: $('buyEmail').value });
+    location.href = r.url;
+  }catch(e){
+    err.textContent = e.message; err.classList.add('show');
+    $('btnBuy').disabled = false; $('btnBuy').textContent = 'Continue to secure payment';
+  }
+};
+
+// ---- route (a new #renew / #billing / #claim link in the same tab reloads the page)
+window.addEventListener('hashchange', () => location.reload());
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const h = new URLSearchParams(location.hash.slice(1));
+  // Keys and secrets travel in the #fragment (never sent to a server log) — clear it from the address bar.
+  if(location.hash) history.replaceState(null, '', location.pathname + location.search);
+  try{
+    if(q.get('session_id')){
+      show('viewBusy'); $('busyTitle').textContent = 'Payment received — thank you!'; $('busyText').textContent = 'Getting your licence key…';
+      let res, lastErr;
+      for(let i = 0; i < 6 && !res; i++){
+        try{ res = await call('getLicence', { sessionId: q.get('session_id') }); }
+        catch(e){ lastErr = e; if(e.status !== 'FAILED_PRECONDITION') break; await new Promise(r => setTimeout(r, 2500)); }
+      }
+      if(!res) throw lastErr;
+      history.replaceState(null, '', location.pathname + '?session_id=' + encodeURIComponent(q.get('session_id')));
+      return showKey(res, 'Your licence key');
+    }
+    if(h.get('renew')){
+      show('viewBusy'); $('busyText').textContent = 'Checking your licence…';
+      const res = await call('renewLicence', { key: h.get('renew') });
+      return showKey(res, 'Your up-to-date key');
+    }
+    if(h.get('billing')){
+      show('viewBusy'); $('busyText').textContent = 'Opening your billing page…';
+      const res = await call('licencePortal', { key: h.get('billing') });
+      location.href = res.url; return;
+    }
+    if(h.get('claim')){
+      show('viewBusy'); $('busyText').textContent = 'Checking your referral rewards…';
+      const res = await call('claimReferral', { secret: h.get('claim'), name: h.get('name') || '', key: h.get('key') || '' });
+      $('cJoined').textContent = res.joined; $('cPaid').textContent = res.paid; $('cMonths').textContent = res.monthsEarned;
+      if(res.key){ showKey(res, res.claimedMonths ? `🎁 ${res.claimedMonths * 3} months of Plus added` : 'Your referral reward licence'); return; }
+      $('claimSub').textContent = res.lifetime ? 'You have Lifetime already, so there is nothing to add — thank you for spreading the word!'
+        : res.joined ? 'No new rewards yet — they appear once a store you referred pays for its subscription.'
+        : 'No one has joined through your link yet. Share it from 🎁 Refer a store in the app.';
+      show('viewClaim'); return;
+    }
+    if(q.get('cancelled')) $('cancelNote').hidden = false;
+    if(q.get('name')) $('buyName').value = q.get('name');
+    if(q.get('tier') === 'plus') document.querySelector('.tier[data-tier=plus]').click();
+    show('viewBuy');
+  }catch(e){ fail(e); }
+})();
+</script>
+</body>
+</html>
