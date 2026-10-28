@@ -137,7 +137,8 @@ function fmt(ms){ return new Date(ms).toLocaleDateString('en-AU', { day: 'numeri
 function showKey(res, title){
   $('keyTitle').textContent = title || 'Your licence key';
   $('keySub').textContent = (res.tier === 'life' ? 'Lifetime' : 'Plus') + ' — licensed to ' + res.name
-    + (res.tier === 'plus' && res.expiresAt ? '. Valid until ' + fmt(res.expiresAt) + ' — renews with your yearly payment.' : '. Never expires.');
+    + (res.test ? '. TEST licence (paid with a Stripe test card): it stops working after 24 hours.'
+      : res.tier === 'plus' && res.expiresAt ? '. Valid until ' + fmt(res.expiresAt) + ' — renews with your yearly payment.' : '. Never expires.');
   $('keyText').value = res.key;
   show('viewKey');
 }
