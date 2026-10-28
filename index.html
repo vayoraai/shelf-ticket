@@ -310,6 +310,68 @@ tbody tr.flash{animation:flashRow .9s;}
 .staff-tag{display:flex;align-items:center;gap:6px;background:#0f2e21;color:#8fd6ab;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;}
 .staff-tag button{background:none;border:none;color:#cfe8da;font-size:11px;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;}
 .gate-staff-note{background:#eef2fb;border:1px solid #cdd8f5;color:#2d3d75;font-size:12px;padding:9px 12px;border-radius:8px;margin-bottom:14px;line-height:1.5;}
+
+/* ---------- Ticket paper picker ---------- */
+.paper-svg .pg{fill:#fff;stroke:#bdb6a2;stroke-width:1.2;}
+.paper-svg rect:not(.pg){fill:#e6f0e8;stroke:#2d7a52;stroke-width:.7;}
+.paper-svg.plain rect:not(.pg){fill:#f5f2e8;stroke:#a7a08b;stroke-dasharray:2 1.5;}
+.paper-summary-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 12px;}
+.paper-summary{display:flex;align-items:center;gap:10px;flex:1;min-width:240px;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:8px 10px;}
+.paper-summary svg{flex:none;}
+.ps-text{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--ink-soft);line-height:1.35;}
+.ps-text b{color:var(--ink);font-size:13px;}
+.ps-warn{color:#8a4d10;font-weight:600;}
+.paper-sample-wrap{margin:0 0 14px;}
+.ps-label{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+#paperSample{overflow:auto;padding:8px;background:#ece7d9;border-radius:8px;}
+#paperSample .ticket-grid{background:#fff;display:inline-grid !important;}
+.paper-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.paper-tools input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;outline:none;}
+.paper-tools input:focus{border-color:var(--green-600);}
+.paper-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+.chip span{color:var(--ink-soft);font-weight:500;margin-left:2px;}
+.chip.on{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.chip.on span{color:#cfe8da;}
+.paper-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
+.paper-card{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;position:relative;transition:.12s;}
+.paper-card:hover{border-color:var(--green-600);box-shadow:0 2px 10px rgba(23,61,46,.08);}
+.paper-card.current{border-color:var(--green-600);box-shadow:0 0 0 2px var(--green-100);}
+.paper-card svg{flex:none;}
+.pc-text{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);line-height:1.35;min-width:0;}
+.pc-text b{font-size:14px;color:var(--ink);}
+.pc-text em{font-style:normal;font-size:11px;font-weight:600;color:var(--green-700);text-transform:uppercase;letter-spacing:.03em;}
+.pc-text i{font-style:normal;font-size:11px;font-weight:700;align-self:flex-start;border-radius:10px;padding:1px 7px;}
+.pc-cur{background:var(--green-100);color:var(--green-700);}
+.pc-warn{background:var(--amber-100);color:#8a4d10;}
+.pc-del{position:absolute;top:6px;right:8px;background:none;color:var(--ink-soft);font-size:12px;cursor:pointer;}
+.pc-del:hover{color:var(--red);}
+.paper-card.add{align-items:center;border-style:dashed;background:var(--cream);}
+.pc-plus{flex:none;width:52px;height:52px;border-radius:10px;background:var(--green-100);color:var(--green-700);font-size:28px;display:flex;align-items:center;justify-content:center;}
+.pc-layout{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:20px;align-items:start;}
+.pc-side{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.pc-info{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-soft);text-align:center;}
+.pc-info b{color:var(--ink);}
+#overlayPaper .pc-only{display:none;}
+#overlayPaper.custom-on .pc-only{display:inline-flex;}
+.nudge-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-soft);}
+.nudge-row .btn{padding:5px 10px;font-size:12.5px;}
+.nudge-row b{color:var(--ink);font-weight:600;}
+@media (max-width:720px){ .pc-layout{grid-template-columns:1fr;} .paper-grid{grid-template-columns:1fr;} }
+
+/* Ticket text follows the size of the paper's tickets */
+.ticket-grid.type-shelf.size-s .t-name{font-size:calc(10px * var(--ns,1));}
+.ticket-grid.type-shelf.size-s .t-price{font-size:calc(19px * var(--ps,1));}
+.ticket-grid.type-shelf.size-l .t-name{font-size:calc(15px * var(--ns,1));}
+.ticket-grid.type-shelf.size-l .t-price{font-size:calc(34px * var(--ps,1));}
+.ticket-grid.type-shelf.size-l .t-cat,.ticket-grid.type-shelf.size-l .t-bay{font-size:9px;}
+.ticket-grid.type-shelf.size-l .t-qty{font-size:10px;}
+/* Tickets that touch the edge of the sheet: keep text inside the printable area */
+.ticket.edge-t{padding-top:4.8mm !important;}
+.ticket.edge-b{padding-bottom:5.4mm !important;}
+.ticket.edge-l{padding-left:4.8mm !important;}
+.ticket.edge-r{padding-right:4.8mm !important;}
+.ticket.edge-b .t-wm{bottom:3.8mm;}
 </style>
 </head>
 <body>
@@ -531,6 +593,7 @@ tbody tr.flash{animation:flashRow .9s;}
         <option value="a4">Promo — A4 (1/page)</option>
       </select>
     </div>
+    <button class="btn" id="btnPaperQuick" title="Shelf tag paper — click to change">🧾 <span id="paperQuickLabel">Plain A4</span></button>
     <label id="promptOfferWrap" style="display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;">
       <input type="checkbox" id="promptOfferToggle"> Ask for offer on each scan
     </label>
@@ -904,7 +967,7 @@ tbody tr.flash{animation:flashRow .9s;}
       <div class="row2" style="margin-top:16px;">
         <div class="field"><label>Currency symbol</label><input id="optCurrency" value="$"></div>
         <div class="field"><label>Shelf tag paper</label>
-          <select id="optPaperPreset">
+          <select id="optPaperPreset" title="Shelf tag paper">
             <option value="plain">Plain A4 (auto-fit any cols × rows)</option>
             <option value="vision24">Vision Supply 24UP — 80×24mm</option>
             <option value="vision30">Vision Supply 30UP — 70×27mm</option>
@@ -915,6 +978,8 @@ tbody tr.flash{animation:flashRow .9s;}
         </div>
       </div>
       <div id="paperPresetNote" class="hint" style="display:none;margin-top:-6px;margin-bottom:10px;"></div>
+      <div class="paper-summary-wrap"><div id="paperSummary" class="paper-summary"></div><button class="btn" id="btnBrowsePaper" type="button">🔍 Browse papers with pictures</button></div>
+      <div class="paper-sample-wrap"><div class="ps-label">Sample shelf tag at real size</div><div id="paperSample"></div></div>
 
       <div class="row2" style="margin-top:4px;">
         <div class="field"><label>Columns</label><input id="optCols" type="number" min="1" max="12" value="3" style="width:100%;"></div>
@@ -938,6 +1003,10 @@ tbody tr.flash{animation:flashRow .9s;}
           <div class="field"><label>Fine-tune: nudge right (mm)</label><input id="optOffsetX" type="number" step="0.1" value="0" style="width:100%;"></div>
           <div class="field"><label>Fine-tune: nudge down (mm)</label><input id="optOffsetY" type="number" step="0.1" value="0" style="width:100%;"></div>
         </div>
+        <div class="nudge-row"><b>Fine-tune:</b>
+          <button type="button" class="btn ghost" data-nudge="0,-0.5">▲ Up</button><button type="button" class="btn ghost" data-nudge="0,0.5">▼ Down</button>
+          <button type="button" class="btn ghost" data-nudge="-0.5,0">◀ Left</button><button type="button" class="btn ghost" data-nudge="0.5,0">▶ Right</button>
+          <span id="nudgeReadout">Not moved</span></div>
         <p class="hint" style="margin-top:8px;margin-bottom:0;">Use the nudge fields if everything's the right size but sits slightly off the perforation — small printer margin differences are normal. Print the alignment test below after any change.</p>
       </div>
       <button class="btn ghost" id="btnPrintAlignTest" style="width:100%;justify-content:center;margin-top:10px;display:none;">🖨️ Print alignment test page</button>
@@ -979,6 +1048,51 @@ tbody tr.flash{animation:flashRow .9s;}
       </div>
       <p class="hint" id="refPendingNote" style="display:none;"></p>
       <p class="hint">Up to 12 free months a year. A reward is taken back if the referred store's payment is refunded within 30 days.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Ticket paper picker ============ -->
+<div class="overlay" id="overlayPaper" style="z-index:350;">
+  <div class="modal wide" style="max-width:1000px;">
+    <div class="modal-head"><h2>Choose your ticket paper</h2><button class="icon-btn" data-close="overlayPaper">✕</button></div>
+    <div class="modal-body">
+      <div id="paperGridWrap">
+        <p class="hint" style="margin:0 0 10px;">Pick the sheet that matches your paper. The drawings are to scale. Not sure? Count the tickets on one sheet and search for that number, e.g. "30".</p>
+        <div class="paper-tools">
+          <input id="paperSearch" placeholder="Search — e.g. 30, 3x10, L7160, Vision, 70x27" autocomplete="off">
+          <div class="paper-chips" id="paperChips"></div>
+        </div>
+        <div class="paper-grid" id="paperGrid"></div>
+      </div>
+      <div id="paperCustom" style="display:none;">
+        <p class="hint" style="margin:0 0 12px;">Measure <b>one ticket</b> with a ruler, count the tickets across and down, and measure from the top and left edge of the sheet to the first ticket. The gaps between tickets are worked out for you.</p>
+        <div class="pc-layout">
+          <div>
+            <div class="field"><label>Name (optional)</label><input id="pcName" placeholder="e.g. Back room 30UP"></div>
+            <div class="row2">
+              <div class="field"><label>Ticket width (mm)</label><input id="pcW" type="number" step="0.1" min="5"></div>
+              <div class="field"><label>Ticket height (mm)</label><input id="pcH" type="number" step="0.1" min="5"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Tickets across</label><input id="pcCols" type="number" min="1" max="12"></div>
+              <div class="field"><label>Tickets down</label><input id="pcRows" type="number" min="1" max="25"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Top edge → first ticket (mm)</label><input id="pcTop" type="number" step="0.1" min="0"></div>
+              <div class="field"><label>Left edge → first ticket (mm)</label><input id="pcLeft" type="number" step="0.1" min="0"></div>
+            </div>
+          </div>
+          <div class="pc-side"><div id="pcPreview"></div><div id="pcInfo" class="pc-info"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot" id="paperCustomFoot" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn ghost" data-close="overlayPaper">Close</button>
+      <span style="flex:1"></span>
+      <button class="btn ghost pc-only" id="btnPcBack">← Back to the list</button>
+      <button class="btn ghost pc-only" id="btnPcUse">Use these measurements</button>
+      <button class="btn primary pc-only" id="btnPcSave">Save to My papers &amp; use</button>
     </div>
   </div>
 </div>
@@ -1105,15 +1219,63 @@ let settings = { mrp:true, unit:false, category:false, showBay:true, expiry:fals
 // Supplier text descriptions are sometimes inconsistent about orientation —
 // ALWAYS print the alignment test page and hold it against a real sheet
 // before running a full batch on pre-cut stock.
+// Ticket paper library. Pre-cut and label sheets print at exact millimetre
+// positions; "plain" grids divide plain A4 evenly (10mm margin, 2.5mm gaps).
+// Measurements are the maker's published template sizes — every pre-cut
+// sheet should still be checked once with the alignment test page.
 const PAPER_PRESETS = {
-  vision24: { label:"Vision Supply 24UP — 80×24mm", cols:8, rows:3, ticketW:24, ticketH:80, marginTop:10, marginLeft:10, gapX:0, gapY:0,
+  // ---- Plain A4, cut it yourself
+  plain:     { group:'plain', label:"Plain A4 — your own columns × rows", short:'Plain A4' },
+  plain3x7:  { group:'plain', label:'Plain A4 — 3 × 7 (21 per sheet)', short:'Plain 3×7', cols:3, rows:7 },
+  plain3x8:  { group:'plain', label:'Plain A4 — 3 × 8 (24 per sheet)', short:'Plain 3×8', cols:3, rows:8 },
+  plain3x9:  { group:'plain', label:'Plain A4 — 3 × 9 (27 per sheet)', short:'Plain 3×9', cols:3, rows:9 },
+  plain3x10: { group:'plain', label:'Plain A4 — 3 × 10 (30 per sheet)', short:'Plain 3×10', cols:3, rows:10 },
+  plain3x11: { group:'plain', label:'Plain A4 — 3 × 11 (33 per sheet)', short:'Plain 3×11', cols:3, rows:11 },
+  plain4x10: { group:'plain', label:'Plain A4 — 4 × 10 (40 per sheet)', short:'Plain 4×10', cols:4, rows:10 },
+  plain2x8:  { group:'plain', label:'Plain A4 — 2 × 8 (16 big tags)', short:'Plain 2×8', cols:2, rows:8 },
+  plain2x5:  { group:'plain', label:'Plain A4 — 2 × 5 (10 large tags)', short:'Plain 2×5', cols:2, rows:5 },
+
+  // ---- Pre-cut / perforated shelf ticket sheets
+  cut3x7:  { group:'cut', label:'Shelf tickets 21UP — 70×42.4mm (3 × 7, edge to edge)', short:'21UP 70×42', cols:3, rows:7, ticketW:70, ticketH:42.4, marginTop:0.1, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 3 × 7 tickets with no border (70×42.4mm each). Print the alignment test once against a real sheet.' },
+  cut3x8:  { group:'cut', label:'Shelf tickets 24UP — 70×37.1mm (3 × 8, edge to edge)', short:'24UP 70×37', cols:3, rows:8, ticketW:70, ticketH:37.1, marginTop:0.1, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 3 × 8 tickets with no border (70×37.1mm each). Print the alignment test once against a real sheet.' },
+  cut3x9:  { group:'cut', label:'Shelf tickets 27UP — 70×33mm (3 × 9, edge to edge)', short:'27UP 70×33', cols:3, rows:9, ticketW:70, ticketH:33, marginTop:0, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 3 × 9 tickets with no border (70×33mm each). Print the alignment test once against a real sheet.' },
+  cut3x10: { group:'cut', label:'Shelf tickets 30UP — 70×29.7mm (3 × 10, edge to edge)', short:'30UP 70×29.7', cols:3, rows:10, ticketW:70, ticketH:29.7, marginTop:0, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 3 × 10 tickets with no border (70×29.7mm each). Print the alignment test once against a real sheet.' },
+  cut3x11: { group:'cut', label:'Shelf tickets 33UP — 70×27mm (3 × 11, edge to edge)', short:'33UP 70×27', cols:3, rows:11, ticketW:70, ticketH:27, marginTop:0, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 3 × 11 tickets with no border (70×27mm each). Print the alignment test once against a real sheet.' },
+  cut4x10: { group:'cut', label:'Shelf tickets 40UP — 52.5×29.7mm (4 × 10, edge to edge)', short:'40UP 52×29.7', cols:4, rows:10, ticketW:52.5, ticketH:29.7, marginTop:0, marginLeft:0, gapX:0, gapY:0,
+             note:'A4 cut into 4 × 10 tickets with no border (52.5×29.7mm each). Print the alignment test once against a real sheet.' },
+  vision24: { group:'cut', label:"Vision Supply 24UP — 80×24mm", short:'Vision 24UP', cols:8, rows:3, ticketW:24, ticketH:80, marginTop:10, marginLeft:10, gapX:0, gapY:0,
     note:"From Vision Supply's listing: 80×24mm tickets, 8×3 layout, 10mm border. Verify orientation with the alignment test before a full run — suppliers sometimes list width/height differently than how the sheet is actually cut." },
-  vision30: { label:"Vision Supply 30UP — 70×27mm", cols:3, rows:10, ticketW:70, ticketH:27, marginTop:13.5, marginLeft:0, gapX:0, gapY:0,
+  vision30: { group:'cut', label:"Vision Supply 30UP — 70×27mm", short:'Vision 30UP', cols:3, rows:10, ticketW:70, ticketH:27, marginTop:13.5, marginLeft:0, gapX:0, gapY:0,
     note:"Vision Supply 30UP: 70×27mm tickets, 3 across × 10 down, edge-to-edge (no gaps). Verify with the alignment test before a full run." },
-  vision33: { label:"Vision Supply 33UP — 70×25mm", cols:3, rows:11, ticketW:70, ticketH:25, marginTop:11, marginLeft:0, gapX:0, gapY:0,
+  vision33: { group:'cut', label:"Vision Supply 33UP — 70×25mm", short:'Vision 33UP', cols:3, rows:11, ticketW:70, ticketH:25, marginTop:11, marginLeft:0, gapX:0, gapY:0,
     note:"Vision Supply 33UP: 70×25mm tickets, 3 across × 11 down, edge-to-edge, double-sided yellow/white stock. Verify with the alignment test before a full run." },
-  pos99_33: { label:"POS'99 33UP — 63×25mm", cols:3, rows:11, ticketW:63, ticketH:25, marginTop:11, marginLeft:8.5, gapX:2, gapY:0,
+  pos99_33: { group:'cut', label:"POS'99 33UP — 63×25mm", short:"POS'99 33UP", cols:3, rows:11, ticketW:63, ticketH:25, marginTop:11, marginLeft:8.5, gapX:2, gapY:0,
     note:"From POS'99's listing: 63×25mm tickets, 33 per sheet. Verify with the alignment test before a full run." },
+
+  // ---- Label sheets (Avery and compatibles, sold at Officeworks etc.)
+  L7173: { group:'label', code:'L7173', label:'Avery L7173 — 10 labels 99.1×57mm (2 × 5)', short:'Avery L7173', cols:2, rows:5, ticketW:99.1, ticketH:57, marginTop:6, marginLeft:4.65, gapX:2.5, gapY:0,
+           note:'Avery L7173 and compatible 10-up labels: 99.1×57mm, 2 across × 5 down. Big shelf tags or shelf-edge signs.' },
+  L7165: { group:'label', code:'L7165', label:'Avery L7165 — 8 labels 99.1×67.7mm (2 × 4)', short:'Avery L7165', cols:2, rows:4, ticketW:99.1, ticketH:67.7, marginTop:13.1, marginLeft:4.65, gapX:2.5, gapY:0,
+           note:'Avery L7165 and compatible 8-up labels: 99.1×67.7mm, 2 across × 4 down.' },
+  L7163: { group:'label', code:'L7163', label:'Avery L7163 — 14 labels 99.1×38.1mm (2 × 7)', short:'Avery L7163', cols:2, rows:7, ticketW:99.1, ticketH:38.1, marginTop:15.15, marginLeft:4.65, gapX:2.5, gapY:0,
+           note:'Avery L7163 and compatible 14-up labels: 99.1×38.1mm, 2 across × 7 down.' },
+  L7162: { group:'label', code:'L7162', label:'Avery L7162 — 16 labels 99.1×33.9mm (2 × 8)', short:'Avery L7162', cols:2, rows:8, ticketW:99.1, ticketH:33.9, marginTop:12.9, marginLeft:4.65, gapX:2.5, gapY:0,
+           note:'Avery L7162 and compatible 16-up labels: 99.1×33.9mm, 2 across × 8 down.' },
+  L7161: { group:'label', code:'L7161', label:'Avery L7161 — 18 labels 63.5×46.6mm (3 × 6)', short:'Avery L7161', cols:3, rows:6, ticketW:63.5, ticketH:46.6, marginTop:8.7, marginLeft:7.25, gapX:2.5, gapY:0,
+           note:'Avery L7161 and compatible 18-up labels: 63.5×46.6mm, 3 across × 6 down.' },
+  L7160: { group:'label', code:'L7160 959001 952000', label:'Avery L7160 — 21 labels 63.5×38.1mm (3 × 7)', short:'Avery L7160', cols:3, rows:7, ticketW:63.5, ticketH:38.1, marginTop:15.15, marginLeft:7.25, gapX:2.5, gapY:0,
+           note:'Avery L7160 (Australian codes 959001 / 952000) and compatible 21-up labels: 63.5×38.1mm, 3 across × 7 down.' },
+  L7159: { group:'label', code:'L7159', label:'Avery L7159 — 24 labels 63.5×33.9mm (3 × 8)', short:'Avery L7159', cols:3, rows:8, ticketW:63.5, ticketH:33.9, marginTop:12.9, marginLeft:7.25, gapX:2.5, gapY:0,
+           note:'Avery L7159 and compatible 24-up labels: 63.5×33.9mm, 3 across × 8 down.' },
+  L7157: { group:'label', code:'L7157', label:'Avery L7157 — 33 labels 64×24.3mm (3 × 11)', short:'Avery L7157', cols:3, rows:11, ticketW:64, ticketH:24.3, marginTop:14.85, marginLeft:6.5, gapX:2.5, gapY:0,
+           note:'Avery L7157 and compatible 33-up labels: 64×24.3mm, 3 across × 11 down.' },
+  L7651: { group:'label', code:'L7651', label:'Avery L7651 — 65 labels 38.1×21.2mm (5 × 13)', short:'Avery L7651', cols:5, rows:13, ticketW:38.1, ticketH:21.2, marginTop:10.7, marginLeft:4.75, gapX:2.5, gapY:0,
+           note:'Avery L7651 and compatible 65-up mini labels: 38.1×21.2mm, 5 across × 13 down. Very small — price and barcode only.' },
 };
 let pendingImportRows = [];
 let importHeaders = [];
@@ -2346,7 +2508,7 @@ function typeConfig(type){
   if(type==='a7') return {cols:4, rows:2, cls:'type-promoA7', label:'A7 promo', fixed:false, cut:true, landscape:true};
   if(type==='a5') return {cols:1, rows:2, cls:'type-promoA5', label:'A5 promo', fixed:false, cut:true};
   if(type==='a4') return {cols:1, rows:1, cls:'type-promoA4', label:'A4 promo', fixed:false};
-  if(settings.paperPreset && settings.paperPreset!=='plain'){
+  if(settings.paperPreset && !String(settings.paperPreset).startsWith('plain')){
     return {
       cols:settings.cols, rows:settings.rows, cls:'type-shelf', label:'Shelf tag', fixed:true,
       ticketW:settings.ticketW, ticketH:settings.ticketH,
@@ -2555,6 +2717,7 @@ function countPages(list){
   return pages;
 }
 function updateQueueStats(){
+  updatePaperQuick();
   $('statQueue').textContent = queue.length;
   $('tabQueueCount').textContent = queue.length;
   const tickets = queue.reduce((a,q)=>a+Math.max(0,q.copies||0),0);
@@ -3143,25 +3306,275 @@ $('btnAdminCreateSubmit').addEventListener('click', async ()=>{
     $('btnAdminCreateSubmit').disabled = false;
   }
 });
-function applyPaperPreset(presetKey, populateFields){
-  const preset = PAPER_PRESETS[presetKey];
-  const showAdvanced = presetKey !== 'plain';
-  $('paperCustomFields').style.display = showAdvanced ? 'block' : 'none';
-  $('btnPrintAlignTest').style.display = showAdvanced ? '' : 'none';
-  if(preset){
-    $('paperPresetNote').style.display = 'block';
-    $('paperPresetNote').textContent = preset.note;
-  } else {
-    $('paperPresetNote').style.display = 'none';
-  }
-  if(populateFields && preset){
-    $('optCols').value = preset.cols; $('optRows').value = preset.rows;
-    $('optTicketW').value = preset.ticketW; $('optTicketH').value = preset.ticketH;
-    $('optMarginTop').value = preset.marginTop; $('optMarginLeft').value = preset.marginLeft;
-    $('optGapX').value = preset.gapX; $('optGapY').value = preset.gapY;
-    $('optOffsetX').value = 0; $('optOffsetY').value = 0;
-  }
+/* ===================== Ticket paper: library, picker, custom sizes ===================== */
+var PAPER_GROUPS = [
+  ['cut', 'Pre-cut shelf ticket sheets'],
+  ['label', 'Label sheets (Avery and compatibles)'],
+  ['plain', 'Plain A4 — cut it yourself'],
+  ['mine', 'My papers'],
+];
+function isPlainKey(k){ return String(k || '').startsWith('plain'); }
+function paperList(){
+  const mine = (settings.myPapers || []).map(m => Object.assign({}, m, { key: 'myp:' + m.id, group: 'mine', short: m.label }));
+  return Object.entries(PAPER_PRESETS).map(([key, p]) => Object.assign({ key }, p)).concat(mine);
 }
+function paperByKey(key){ return paperList().find(p => p.key === key) || null; }
+// Size of one ticket in mm. Plain A4 grids share the page inside a 10mm border with 2.5mm gaps.
+function paperCell(p){
+  if(isPlainKey(p.key) || p.group === 'plain'){
+    const cols = Math.max(1, p.cols || settings.cols || 3), rows = Math.max(1, p.rows || settings.rows || 8);
+    return { w: (190 - (cols - 1) * 2.5) / cols, h: (277 - (rows - 1) * 2.5) / rows, cols, rows };
+  }
+  return { w: +p.ticketW || 0, h: +p.ticketH || 0, cols: p.cols || 1, rows: p.rows || 1 };
+}
+function paperRotated(c){ return c.h > c.w * 1.6; }
+function paperNarrow(c){ const w = paperRotated(c) ? c.h : c.w; return w < 37; }
+function mm(n){ return String(Math.round(n * 10) / 10); }
+function paperLine(p){ const c = paperCell(p); return `${c.cols * c.rows} per sheet · ${mm(c.w)}×${mm(c.h)}mm · ${c.cols} across × ${c.rows} down`; }
+function paperFits(p){
+  if(isPlainKey(p.key)) return true;
+  const c = paperCell(p);
+  return c.w > 0 && c.h > 0 && (+p.marginLeft || 0) + c.cols * c.w + (c.cols - 1) * (+p.gapX || 0) <= 210.6
+    && (+p.marginTop || 0) + c.rows * c.h + (c.rows - 1) * (+p.gapY || 0) <= 297.6;
+}
+// To-scale drawing of the sheet.
+function paperSvg(p, width){
+  const c = paperCell(p), plain = isPlainKey(p.key);
+  const mt = plain ? 10 : (+p.marginTop || 0), ml = plain ? 10 : (+p.marginLeft || 0), gx = plain ? 2.5 : (+p.gapX || 0), gy = plain ? 2.5 : (+p.gapY || 0);
+  let cells = '';
+  if(c.w > 0 && c.h > 0 && c.cols * c.rows <= 200)
+    for(let r = 0; r < c.rows; r++) for(let k = 0; k < c.cols; k++)
+      cells += `<rect x="${(ml + k * (c.w + gx)).toFixed(2)}" y="${(mt + r * (c.h + gy)).toFixed(2)}" width="${c.w.toFixed(2)}" height="${c.h.toFixed(2)}" rx="1"/>`;
+  return `<svg class="paper-svg${plain ? ' plain' : ''}" viewBox="-1 -1 212 299" width="${width}" height="${Math.round(width * 299 / 212)}" aria-hidden="true"><rect class="pg" x="0" y="0" width="210" height="297"/>${cells}</svg>`;
+}
+// Ticket text size follows the cell: compact for small tags, bigger for large ones.
+function shelfSizeClass(type, cfg){
+  if(type !== 'shelf') return '';
+  let w, h;
+  if(cfg.fixed){ w = cfg.ticketW; h = cfg.ticketH; if(h > w * 1.6){ const t = w; w = h; h = t; } }
+  else { w = (190 - (cfg.cols - 1) * 2.5) / cfg.cols; h = (277 - (cfg.rows - 1) * 2.5) / cfg.rows; }
+  return h < 26 ? 'size-s' : (h >= 40 && w >= 80) ? 'size-l' : '';
+}
+// Most printers can't print the outer ~4mm of the page: tickets that touch the
+// paper edge get extra inside padding on that side so nothing is cut off.
+function edgeCell(html, i, cfg, rotate){
+  if(rotate) return html;
+  const row = Math.floor(i / cfg.cols), col = i % cfg.cols;
+  const top = cfg.marginTop + (cfg.offsetY || 0), left = cfg.marginLeft + (cfg.offsetX || 0);
+  const right = 210 - left - cfg.cols * cfg.ticketW - (cfg.cols - 1) * cfg.gapX;
+  const bottom = 297 - top - cfg.rows * cfg.ticketH - (cfg.rows - 1) * cfg.gapY;
+  const cls = [];
+  if(row === 0 && top < 4.5) cls.push('edge-t');
+  if(row === cfg.rows - 1 && bottom < 4.5) cls.push('edge-b');
+  if(col === 0 && left < 4.5) cls.push('edge-l');
+  if(col === cfg.cols - 1 && right < 4.5) cls.push('edge-r');
+  return cls.length ? html.replace('<div class="ticket', '<div class="ticket ' + cls.join(' ')) : html;
+}
+
+function buildPaperOptions(){
+  const sel = $('optPaperPreset'), cur = sel.value, list = paperList();
+  sel.innerHTML = PAPER_GROUPS.map(([g, label]) => {
+    const items = list.filter(p => p.group === g);
+    return items.length ? `<optgroup label="${label}">${items.map(p => `<option value="${escapeHtml(p.key)}">${escapeHtml(p.label)}</option>`).join('')}</optgroup>` : '';
+  }).join('') + '<optgroup label="Something else"><option value="custom">Custom — enter my own measurements</option></optgroup>';
+  if(cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+function applyPaperPreset(presetKey, populateFields){
+  const p = paperByKey(presetKey), plain = isPlainKey(presetKey);
+  $('paperCustomFields').style.display = plain ? 'none' : 'block';
+  $('btnPrintAlignTest').style.display = plain ? 'none' : '';
+  $('paperPresetNote').style.display = p && p.note ? 'block' : 'none';
+  $('paperPresetNote').textContent = p && p.note ? p.note : '';
+  if(populateFields && p){
+    if(p.cols){ $('optCols').value = p.cols; $('optRows').value = p.rows; }
+    if(!plain){
+      $('optTicketW').value = p.ticketW; $('optTicketH').value = p.ticketH;
+      $('optMarginTop').value = p.marginTop; $('optMarginLeft').value = p.marginLeft;
+      $('optGapX').value = p.gapX; $('optGapY').value = p.gapY;
+      $('optOffsetX').value = 0; $('optOffsetY').value = 0;
+    }
+  }
+  renderPaperSummary();
+}
+// The paper as currently entered in the Fields window (saved or not).
+function formPaper(){
+  const key = $('optPaperPreset').value || 'plain';
+  const base = paperByKey(key) || { label: 'Custom measurements', group: 'custom' };
+  const n = id => parseFloat($(id).value);
+  return Object.assign({}, base, { key,
+    cols: parseInt($('optCols').value) || 3, rows: parseInt($('optRows').value) || 8,
+    ticketW: n('optTicketW') || 0, ticketH: n('optTicketH') || 0, marginTop: n('optMarginTop') || 0, marginLeft: n('optMarginLeft') || 0,
+    gapX: n('optGapX') || 0, gapY: n('optGapY') || 0 });
+}
+function paperWarn(p){
+  if(!paperFits(p)) return 'These measurements don\'t fit on an A4 sheet — check the numbers.';
+  if(paperNarrow(paperCell(p))) return 'Narrow tickets: barcodes print smaller than standard and may not scan at every register. Test one sheet first.';
+  return '';
+}
+function renderPaperSummary(){
+  if(!$('paperSummary')) return;
+  const p = formPaper(), warn = paperWarn(p);
+  $('paperSummary').innerHTML = `${paperSvg(p, 58)}<div class="ps-text"><b>${escapeHtml(p.label)}</b><span>${paperLine(p)}</span>${warn ? `<span class="ps-warn">⚠ ${escapeHtml(warn)}</span>` : ''}</div>`;
+  renderPaperSample(p);
+}
+// One real ticket, drawn at its true printed size.
+var paperSampleTimer = null;
+function renderPaperSample(p){
+  clearTimeout(paperSampleTimer);
+  paperSampleTimer = setTimeout(()=>{
+    const box = $('paperSample'); if(!box) return;
+    const c = paperCell(p);
+    if(!(c.w > 0 && c.h > 0) || !paperFits(p)){ box.innerHTML = ''; return; }
+    const src = queue.find(q => (q.type || 'shelf') === 'shelf') || products[0]
+      || { name: "Arnott's Tim Tam Original 200g", barcode: '9310072011691', price: 4.5, qty: '200g', category: 'Biscuits' };
+    const item = Object.assign({}, src, { type: 'shelf', bay: src.bay || 'Aisle 3', copies: 1 });
+    const rot = paperRotated(c), W = rot ? c.h : c.w, H = rot ? c.w : c.h;
+    const cfg = { fixed: true, ticketW: W, ticketH: H };
+    box.innerHTML = `<div class="ticket-grid type-shelf ${shelfSizeClass('shelf', cfg)}" style="display:grid;grid-template-columns:${W}mm;grid-template-rows:${H}mm;height:auto;width:auto;gap:0;">${ticketHtml(item)}</div>`;
+    renderBarcodes(box);
+    requestAnimationFrame(()=> box.querySelectorAll('.ticket').forEach(fitTicket));
+  }, 120);
+}
+
+/* ---- the picture picker ---- */
+var paperPickMode = 'settings', paperFilter = 'all';
+function openPaperPicker(mode){
+  paperPickMode = mode;
+  $('paperSearch').value = '';
+  paperFilter = 'all';
+  $('paperCustom').style.display = 'none';
+  $('paperGridWrap').style.display = '';
+  $('overlayPaper').classList.remove('custom-on');
+  renderPaperPicker();
+  openModal('overlayPaper');
+  setTimeout(()=> $('paperSearch').focus(), 50);
+}
+function currentPaperKey(){ return paperPickMode === 'settings' ? $('optPaperPreset').value : (settings.paperPreset || 'plain'); }
+function renderPaperPicker(){
+  const q = $('paperSearch').value.trim().toLowerCase().replace(/(\d)\s*[x×*]\s*(\d)/g, '$1×$2');
+  const list = paperList().filter(p => (paperFilter === 'all' || p.group === paperFilter)
+    && (!q || (p.label + ' ' + (p.code || '') + ' ' + paperLine(p) + ' ' + (p.short || '') + ' ' + paperCell(p).cols * paperCell(p).rows + 'up ' + paperCell(p).cols + '×' + paperCell(p).rows + ' ' + mm(paperCell(p).w) + '×' + mm(paperCell(p).h)).toLowerCase().includes(q)));
+  const counts = Object.fromEntries(PAPER_GROUPS.map(([g]) => [g, paperList().filter(p => p.group === g).length]));
+  $('paperChips').innerHTML = [['all', 'All']].concat(PAPER_GROUPS.map(([g, l]) => [g, l.replace(/ \(.*\)| — .*/, '')])).filter(([g]) => g === 'all' || counts[g])
+    .map(([g, l]) => `<button type="button" class="chip${paperFilter === g ? ' on' : ''}" data-filter="${g}">${escapeHtml(l)}${g !== 'all' ? ` <span>${counts[g]}</span>` : ''}</button>`).join('');
+  const cur = currentPaperKey();
+  const card = p => {
+    const warn = paperNarrow(paperCell(p));
+    return `<button type="button" class="paper-card${p.key === cur ? ' current' : ''}" data-key="${escapeHtml(p.key)}">
+      ${paperSvg(p, 74)}
+      <span class="pc-text"><b>${escapeHtml(p.short || p.label)}</b><span>${paperLine(p)}</span>
+      <em>${escapeHtml(p.group === 'label' ? 'Label sheet' + (p.code ? ' · ' + p.code.split(' ')[0] : '') : p.group === 'cut' ? 'Pre-cut shelf tickets' : p.group === 'mine' ? 'My paper' : 'Plain A4 · cut yourself')}</em>
+      ${p.key === cur ? '<i class="pc-cur">✓ In use</i>' : ''}${warn ? '<i class="pc-warn" title="Narrow: barcodes print smaller">⚠ narrow</i>' : ''}
+      ${p.group === 'mine' ? `<i class="pc-del" data-del="${escapeHtml(p.key)}" title="Delete this paper">✕</i>` : ''}</span></button>`;
+  };
+  $('paperGrid').innerHTML = (list.length ? list.map(card).join('') : `<p class="hint" style="grid-column:1/-1;">Nothing matches "${escapeHtml($('paperSearch').value)}".</p>`)
+    + `<button type="button" class="paper-card add" id="paperAddCustom"><span class="pc-plus">＋</span><span class="pc-text"><b>My paper isn't listed</b><span>Measure one ticket with a ruler and enter 6 numbers.</span></span></button>`;
+}
+$('paperSearch').addEventListener('input', renderPaperPicker);
+$('paperChips').addEventListener('click', e=>{ const b = e.target.closest('[data-filter]'); if(!b) return; paperFilter = b.dataset.filter; renderPaperPicker(); });
+$('paperGrid').addEventListener('click', e=>{
+  const del = e.target.closest('[data-del]');
+  if(del){
+    e.stopPropagation();
+    const id = del.dataset.del.slice(4), p = paperByKey(del.dataset.del);
+    if(!confirm(`Delete "${p.label}" from My papers?`)) return;
+    settings.myPapers = (settings.myPapers || []).filter(m => m.id !== id);
+    saveSettingsLocal(); buildPaperOptions(); renderPaperPicker(); return;
+  }
+  if(e.target.closest('#paperAddCustom')){ openPaperCustom(); return; }
+  const b = e.target.closest('[data-key]'); if(!b) return;
+  choosePaper(paperByKey(b.dataset.key));
+});
+function choosePaper(p){
+  if(paperPickMode === 'settings'){
+    buildPaperOptions();
+    $('optPaperPreset').value = p.key;
+    applyPaperPreset(p.key, true);
+  } else {
+    settings.paperPreset = p.key;
+    if(p.cols){ settings.cols = p.cols; settings.rows = p.rows; }
+    if(!isPlainKey(p.key)) Object.assign(settings, { ticketW: p.ticketW, ticketH: p.ticketH, marginTop: p.marginTop, marginLeft: p.marginLeft, gapX: p.gapX, gapY: p.gapY, offsetX: 0, offsetY: 0 });
+    saveSettingsLocal(); renderQueue();
+    toast(`Shelf tag paper: ${p.short || p.label}` + (isPlainKey(p.key) ? '' : ' — print the alignment test once (Fields)'));
+  }
+  closeModal('overlayPaper');
+}
+/* ---- "my paper isn't listed" ---- */
+function customPaperFromForm(){
+  const n = id => parseFloat($(id).value) || 0;
+  const w = n('pcW'), h = n('pcH'), cols = Math.max(1, parseInt($('pcCols').value) || 1), rows = Math.max(1, parseInt($('pcRows').value) || 1);
+  const mt = n('pcTop'), ml = n('pcLeft');
+  // Gaps: worked out from the page size, assuming the sheet is centred.
+  const gx = cols > 1 ? Math.max(0, (210 - 2 * ml - cols * w) / (cols - 1)) : 0;
+  const gy = rows > 1 ? Math.max(0, (297 - 2 * mt - rows * h) / (rows - 1)) : 0;
+  return { key: 'custom', group: 'custom', label: ($('pcName').value || '').trim() || `My paper ${mm(w)}×${mm(h)}mm`,
+    cols, rows, ticketW: w, ticketH: h, marginTop: mt, marginLeft: ml, gapX: Math.round(gx * 100) / 100, gapY: Math.round(gy * 100) / 100 };
+}
+function openPaperCustom(){
+  const p = paperPickMode === 'settings' ? formPaper() : Object.assign({}, settings);
+  const isFixed = !isPlainKey(p.key || settings.paperPreset);
+  $('pcName').value = '';
+  $('pcW').value = isFixed ? p.ticketW : 70; $('pcH').value = isFixed ? p.ticketH : 29.7;
+  $('pcCols').value = isFixed ? p.cols : 3; $('pcRows').value = isFixed ? p.rows : 10;
+  $('pcTop').value = isFixed ? p.marginTop : 0; $('pcLeft').value = isFixed ? p.marginLeft : 0;
+  $('paperGridWrap').style.display = 'none';
+  $('paperCustom').style.display = '';
+  $('overlayPaper').classList.add('custom-on');
+  renderPaperCustom();
+}
+function renderPaperCustom(){
+  const p = customPaperFromForm(), warn = paperWarn(p);
+  $('pcPreview').innerHTML = paperSvg(p, 150);
+  $('pcInfo').innerHTML = `<b>${paperLine(p)}</b><span>Gaps worked out: ${mm(p.gapX)}mm between columns, ${mm(p.gapY)}mm between rows.</span>${warn ? `<span class="ps-warn">⚠ ${escapeHtml(warn)}</span>` : ''}`;
+  $('btnPcUse').disabled = $('btnPcSave').disabled = !paperFits(p);
+}
+['pcW','pcH','pcCols','pcRows','pcTop','pcLeft'].forEach(id => $(id).addEventListener('input', renderPaperCustom));
+$('btnPcBack').addEventListener('click', ()=>{ $('paperCustom').style.display = 'none'; $('paperGridWrap').style.display = ''; $('overlayPaper').classList.remove('custom-on'); });
+$('btnPcUse').addEventListener('click', ()=>{
+  const p = customPaperFromForm();
+  if(paperPickMode === 'settings'){
+    $('optPaperPreset').value = 'custom'; applyPaperPreset('custom', false);
+    $('optCols').value = p.cols; $('optRows').value = p.rows; $('optTicketW').value = p.ticketW; $('optTicketH').value = p.ticketH;
+    $('optMarginTop').value = p.marginTop; $('optMarginLeft').value = p.marginLeft; $('optGapX').value = p.gapX; $('optGapY').value = p.gapY;
+    $('optOffsetX').value = 0; $('optOffsetY').value = 0; renderPaperSummary();
+  } else {
+    Object.assign(settings, { paperPreset: 'custom', cols: p.cols, rows: p.rows, ticketW: p.ticketW, ticketH: p.ticketH, marginTop: p.marginTop, marginLeft: p.marginLeft, gapX: p.gapX, gapY: p.gapY, offsetX: 0, offsetY: 0 });
+    saveSettingsLocal(); renderQueue(); toast('Shelf tag paper set — print the alignment test once (Fields)');
+  }
+  closeModal('overlayPaper');
+});
+$('btnPcSave').addEventListener('click', ()=>{
+  const p = customPaperFromForm();
+  const id = Date.now().toString(36);
+  settings.myPapers = (settings.myPapers || []).concat([{ id, label: p.label, cols: p.cols, rows: p.rows, ticketW: p.ticketW, ticketH: p.ticketH,
+    marginTop: p.marginTop, marginLeft: p.marginLeft, gapX: p.gapX, gapY: p.gapY, note: 'Your own measurements. Print the alignment test once against a real sheet.' }]).slice(-20);
+  saveSettingsLocal(); buildPaperOptions();
+  toast(`Saved "${p.label}" to My papers`);
+  choosePaper(paperByKey('myp:' + id));
+});
+
+/* ---- fine-tune arrows (0.5mm steps) ---- */
+function renderNudge(){
+  const x = parseFloat($('optOffsetX').value) || 0, y = parseFloat($('optOffsetY').value) || 0;
+  $('nudgeReadout').textContent = (x || y) ? `Moved ${x ? Math.abs(x) + 'mm ' + (x > 0 ? 'right' : 'left') : ''}${x && y ? ', ' : ''}${y ? Math.abs(y) + 'mm ' + (y > 0 ? 'down' : 'up') : ''}` : 'Not moved';
+}
+document.querySelectorAll('[data-nudge]').forEach(b => b.addEventListener('click', ()=>{
+  const [dx, dy] = b.dataset.nudge.split(',').map(Number);
+  const ix = $('optOffsetX'), iy = $('optOffsetY');
+  ix.value = Math.round(((parseFloat(ix.value) || 0) + dx) * 10) / 10;
+  iy.value = Math.round(((parseFloat(iy.value) || 0) + dy) * 10) / 10;
+  renderNudge();
+}));
+['optOffsetX','optOffsetY'].forEach(id => $(id).addEventListener('input', renderNudge));
+['optCols','optRows','optTicketW','optTicketH','optMarginTop','optMarginLeft','optGapX','optGapY'].forEach(id => $(id).addEventListener('input', renderPaperSummary));
+$('btnBrowsePaper').addEventListener('click', ()=> openPaperPicker('settings'));
+$('btnPaperQuick').addEventListener('click', ()=> openPaperPicker('direct'));
+function updatePaperQuick(){
+  const el = $('paperQuickLabel'); if(!el) return;
+  const p = paperByKey(settings.paperPreset || 'plain');
+  el.textContent = p ? (p.short || p.label) + (isPlainKey(p.key) && !p.cols ? ` ${settings.cols}×${settings.rows}` : '') : `Custom ${mm(settings.ticketW)}×${mm(settings.ticketH)}`;
+}
+buildPaperOptions();
 $('optPaperPreset').addEventListener('change', e=>{
   applyPaperPreset(e.target.value, e.target.value!=='custom');
 });
@@ -3287,18 +3700,20 @@ $('btnSettings').addEventListener('click', ()=>{
   $('optExpiry').checked = settings.expiry; $('optCurrency').value = settings.currency;
   $('optCols').value = settings.cols; $('optRows').value = settings.rows;
   $('optBeep').checked = settings.beepOnScan !== false;
+  buildPaperOptions();
   $('optPaperPreset').value = settings.paperPreset || 'plain';
   $('optTicketW').value = settings.ticketW; $('optTicketH').value = settings.ticketH;
   $('optMarginTop').value = settings.marginTop; $('optMarginLeft').value = settings.marginLeft;
   $('optGapX').value = settings.gapX; $('optGapY').value = settings.gapY;
   $('optOffsetX').value = settings.offsetX||0; $('optOffsetY').value = settings.offsetY||0;
   applyPaperPreset(settings.paperPreset || 'plain', false);
+  renderNudge();
   openModal('overlaySettings');
 });
 $('btnSaveSettings').addEventListener('click', ()=>{
   settings.mrp = $('optMrp').checked; settings.unit = $('optUnit').checked;
   settings.category = $('optCategory').checked; settings.showBay = $('optBay').checked;
-  settings.expiry = $('optExpiry').checked; settings.currency = $('optCurrency').value.trim() || '₹';
+  settings.expiry = $('optExpiry').checked; settings.currency = $('optCurrency').value.trim() || '$';
   settings.cols = Math.max(1, parseInt($('optCols').value)||3);
   settings.rows = Math.max(1, parseInt($('optRows').value)||8);
   settings.beepOnScan = $('optBeep').checked;
@@ -3445,11 +3860,11 @@ function buildPagesHtml(list){
         const cellHtml = p => rotate
           ? `<div class="rot-cell">${ticketHtml(p).replace('<div class="ticket', `<div style="width:${cfg.ticketH}mm;height:${cfg.ticketW}mm;transform:translateY(${cfg.ticketH}mm) rotate(-90deg);" class="ticket`)}</div>`
           : ticketHtml(p);
-        const cells = chunk.map(cellHtml).join('');
+        const cells = chunk.map((p, i) => edgeCell(cellHtml(p), i, cfg, rotate)).join('');
         const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div></div>').join('') : '';
         const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm 0 ${cfg.marginLeft+cfg.offsetX}mm;`;
         const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
-        html += `<div class="page-frame"><div class="page" style="${pageStyle}"><div class="ticket-grid ${cfg.cls}" style="${gridStyle}">${cells}${fillerHtml}</div></div></div>`;
+        html += `<div class="page-frame"><div class="page" style="${pageStyle}"><div class="ticket-grid ${cfg.cls} ${shelfSizeClass(type, cfg)}" style="${gridStyle}">${cells}${fillerHtml}</div></div></div>`;
       } else if(cfg.cut){
         // True-size A7 / A5: cells tile the whole sheet with no margin or gap,
         // so cutting on the dashed lines gives real A-series tickets. Content
@@ -3461,11 +3876,11 @@ function buildPagesHtml(list){
         for(let c=1;c<cfg.cols;c++) cuts += `<div class="cut-line v" style="left:${(c*100/cfg.cols).toFixed(4)}%"></div>`;
         for(let r=1;r<cfg.rows;r++) cuts += `<div class="cut-line h" style="top:${(r*100/cfg.rows).toFixed(4)}%"></div>`;
         const frameCls = cfg.landscape ? 'page-frame pf-landscape' : 'page-frame';
-        html += `<div class="${frameCls}"><div class="page page-cut"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div>${cuts}</div></div>`;
+        html += `<div class="${frameCls}"><div class="page page-cut"><div class="ticket-grid ${cfg.cls} ${shelfSizeClass(type, cfg)}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div>${cuts}</div></div>`;
       } else {
         const cells = chunk.map(ticketHtml).join('');
         const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
-        html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
+        html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls} ${shelfSizeClass(type, cfg)}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
       }
     }
   });
