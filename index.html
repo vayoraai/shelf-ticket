@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.6/dist/iife/reader/index.js"></script>
 <style>
 :root{
   --green-900:#173d2e; --green-700:#1f5c41; --green-600:#2d7a52; --green-100:#e6f0e8;
@@ -3105,7 +3105,7 @@ function playErrorBeep(){
 }
 
 async function handleScan(code){
-  const p = products.find(x=>x.barcode===code);
+  const p = findProductByBarcode(code);
   const bay = $('bayInput').value.trim();
   const type = $('ticketTypeInput').value;
   if(p){
@@ -3128,12 +3128,27 @@ async function handleScan(code){
   }
 }
 
+// The same item can be stored as UPC-A (12 digits), EAN-13 (with a leading
+// 0) or GTIN-14 (more leading 0s) depending on the POS export or scanner.
+// Try the exact code first, then the same number with leading zeros
+// added or removed.
+function findProductByBarcode(code){
+  const exact = products.find(x=>x.barcode===code);
+  if(exact || !/^\d{8,14}$/.test(code)) return exact;
+  const core = code.replace(/^0+/,'');
+  return products.find(x=>{
+    const b = String(x.barcode||'');
+    return /^\d{8,14}$/.test(b) && b.replace(/^0+/,'') === core;
+  });
+}
+
 /* ===================== Camera scanner (mobile) ===================== */
-// Camera barcode reading can occasionally misread a digit or two — especially
-// on glossy/foil packaging or in imperfect lighting. Real barcodes (EAN-8,
-// UPC-A, EAN-13, GTIN-14) carry a built-in check digit specifically so this
-// kind of misread can be caught and rejected automatically, rather than
-// silently accepting a garbled number as if it were correct.
+// Uses ZXing (zxing-cpp compiled to WebAssembly, loaded as ZXingWASM).
+// It replaced QuaggaJS in Nov 2026: Quagga missed many EAN-13s on iPhone
+// and could misread one as a different, valid-looking number.
+// ZXing verifies each EAN/UPC check digit itself and needs two matching
+// scan lines across the bars before it reports a code (minLineCount).
+// We still keep our own checksum test and a vote across frames (below).
 function isValidGtinChecksum(code){
   if(/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code)){
     const digits = code.split('').map(Number);
@@ -3147,98 +3162,205 @@ function isValidGtinChecksum(code){
     return ((10 - (sum % 10)) % 10) === check;
   }
   if(/^\d+$/.test(code)){
-    // All-digit, but not a standard barcode length (8/12/13/14). For our
-    // use case (EAN-13 product barcodes) this is almost always a partial
-    // or garbled misread — a real barcode wouldn't come out this shape.
-    // Reject rather than trust it, unlike before.
+    // All digits but not a standard barcode length (8/12/13/14): almost
+    // always a partial or garbled read, so reject it.
     return false;
   }
-  // Contains letters/symbols — genuinely can't checksum-validate (e.g.
-  // CODE128/Codabar content), so let it through; this isn't the numeric
-  // misread pattern being guarded against here.
+  // Letters/symbols (Code 128 / Codabar content): can't checksum, allow.
   return true;
 }
 
-let quaggaRunning = false;
-let scanArmed = false; // true only in the moment right after a Scan tap — this is the real fix:
-                        // detection results are only ever acted on while armed, so simply having
-                        // a barcode in view (without tapping) never adds anything by itself.
+const ZX_READER_OPTS = {
+  formats:['EAN13','EAN8','UPCA','UPCE','Code128','Codabar'],
+  tryHarder:true,     // slower per frame, much better on curved/glossy packs
+  tryRotate:true,     // barcode held sideways or upside down
+  tryInvert:false,
+  minLineCount:2,     // two agreeing scan lines before a 1D code counts
+  maxNumberOfSymbols:1,
+};
+let zxReady = null;   // promise: the WebAssembly module is loaded
+function loadZXing(){
+  if(!zxReady){
+    if(typeof ZXingWASM === 'undefined') return Promise.reject(new Error('barcode reader did not load (check your internet connection)'));
+    zxReady = Promise.resolve(ZXingWASM.prepareZXingModule(Object.assign({fireImmediately:true}, window.__zxingOverrides ? {overrides:window.__zxingOverrides} : {})));
+    zxReady.catch(()=>{ zxReady = null; });
+  }
+  return zxReady;
+}
+
+let camStream = null;   // MediaStream while the modal is open
+let camVideo = null;    // <video> showing the stream
+let camLoopTimer = null;
+let camSession = 0;     // bumps on every open/close so stale callbacks stop
+const camCanvas = document.createElement('canvas');
+const camCtx = camCanvas.getContext('2d', { willReadFrequently:true });
+let scanArmed = false; // detections are only acted on right after a Scan tap
 
 function setTriggerIdle(){
   scanArmed = false;
+  stopDecodeLoop();
   $('btnScanTrigger').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg> Tap to Scan';
 }
 function setTriggerArmed(){
   scanArmed = true;
   $('btnScanTrigger').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg> Scanning… tap to cancel';
   $('camStatus').textContent = 'Hold steady on the barcode…';
+  startDecodeLoop();
 }
 
-$('btnCamera').addEventListener('click', ()=>{
+// Grab only what's inside the amber box (plus a small margin) so a busy
+// background or a neighbouring product's barcode isn't picked up. The video
+// is shown with object-fit:cover, so map the on-screen box back to the
+// camera's own pixels.
+function grabScanBox(){
+  const v = camVideo;
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if(!vw || !vh) return null;
+  const wrap = $('cameraWrap');
+  const ww = wrap.clientWidth || vw, wh = wrap.clientHeight || vh;
+  const scale = Math.max(ww / vw, wh / vh);
+  const visW = ww / scale, visH = wh / scale;
+  // .scan-frame is 78% x 34% of the preview; read 90% x 50% for margin.
+  // Whole pixels only, and no resizing: any resampling softens the bars
+  // enough that small or distant barcodes stop reading.
+  const bw = Math.round(Math.min(vw, visW * 0.90)), bh = Math.round(Math.min(vh, visH * 0.50));
+  const sx = Math.round((vw - bw) / 2), sy = Math.round((vh - bh) / 2);
+  if(camCanvas.width !== bw) camCanvas.width = bw;
+  if(camCanvas.height !== bh) camCanvas.height = bh;
+  camCtx.drawImage(v, sx, sy, bw, bh, 0, 0, bw, bh);
+  return camCtx.getImageData(0, 0, bw, bh);
+}
+
+// Unsharp mask (grey + 2 x detail) for slightly out-of-focus frames. Phones
+// often hunt for focus up close, and in testing this turned blurry frames
+// ZXing couldn't read at all into clean reads, without any wrong numbers.
+// Used on every second frame, so sharp frames are still read as they are.
+let sharpBufs = null;
+function sharpenForScan(img){
+  const w = img.width, h = img.height, n = w*h, d = img.data;
+  if(!sharpBufs || sharpBufs.n !== n) sharpBufs = { n, g:new Float32Array(n), t:new Float32Array(n), b:new Float32Array(n), out:new ImageData(w,h) };
+  const { g, t, b, out } = sharpBufs, o = out.data, R = 2, span = 2*R+1;
+  for(let i=0,j=0;i<n;i++,j+=4) g[i] = 0.299*d[j] + 0.587*d[j+1] + 0.114*d[j+2];
+  const boxH = (src, dst)=>{ for(let y=0;y<h;y++){ const row=y*w; let acc=0;
+      for(let k=-R;k<=R;k++) acc += src[row+Math.min(w-1,Math.max(0,k))];
+      for(let x=0;x<w;x++){ dst[row+x]=acc/span; acc += src[row+Math.min(w-1,x+R+1)] - src[row+Math.max(0,x-R)]; } } };
+  const boxV = (src, dst)=>{ for(let x=0;x<w;x++){ let acc=0;
+      for(let k=-R;k<=R;k++) acc += src[Math.min(h-1,Math.max(0,k))*w+x];
+      for(let y=0;y<h;y++){ dst[y*w+x]=acc/span; acc += src[Math.min(h-1,y+R+1)*w+x] - src[Math.max(0,y-R)*w+x]; } } };
+  boxH(g,t); boxV(t,b); boxH(b,t); boxV(t,b); // two box passes ~ gaussian
+  for(let i=0,j=0;i<n;i++,j+=4){ const v = g[i] + 2*(g[i]-b[i]); const c = v<0?0:v>255?255:v; o[j]=o[j+1]=o[j+2]=c; o[j+3]=255; }
+  return out;
+}
+
+let lastCode='', lastTime=0, readTally={};
+function stopDecodeLoop(){
+  if(camLoopTimer){ clearTimeout(camLoopTimer); camLoopTimer = null; }
+}
+function startDecodeLoop(){
+  stopDecodeLoop();
+  readTally={};
+  const session = camSession;
+  let frameNo = 0;
+  const tick = async ()=>{
+    camLoopTimer = null;
+    if(!scanArmed || session !== camSession || !camVideo) return;
+    let code = null;
+    try{
+      let img = grabScanBox();
+      if(img){
+        if((frameNo++) % 2 === 1) img = sharpenForScan(img);
+        const results = await ZXingWASM.readBarcodes(img, ZX_READER_OPTS);
+        const r = results.find(x => x.isValid && x.text);
+        if(r) code = r.text;
+      }
+    }catch(e){ /* a bad frame: just try the next one */ }
+    if(!scanArmed || session !== camSession) return;
+    if(code && onCameraCode(code)) return; // accepted: loop ends here
+    camLoopTimer = setTimeout(tick, 60);
+  };
+  tick();
+}
+
+// Returns true when a code was accepted (and the scan is finished).
+// Every read since Scan was tapped is counted. A code is accepted once it
+// has been read at least twice AND at least two more times than any other
+// code. A blurry barcode can produce the odd wrong number; this stops one
+// from winning just by turning up twice.
+function onCameraCode(code){
+  const now = Date.now();
+  if(code===lastCode && now-lastTime < 1500) return false; // just did this one
+  if(!isValidGtinChecksum(code)) return false;
+  readTally[code] = (readTally[code]||0) + 1;
+  let rival = 0;
+  for(const k in readTally){ if(k!==code && readTally[k]>rival) rival = readTally[k]; }
+  if(readTally[code] < 2 + rival){
+    $('camStatus').textContent = `Confirming: ${code}…`;
+    return false;
+  }
+  lastCode = code; lastTime = now; readTally={};
+  // One capture per tap.
+  setTriggerIdle();
+  $('camStatus').textContent = `Detected: ${code}`;
+  handleScan(code);
+  return true;
+}
+
+function stopCameraStream(){
+  camSession++;
+  stopDecodeLoop();
+  if(camStream){ camStream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); camStream = null; }
+  if(camVideo){ try{ camVideo.srcObject = null; }catch(e){} camVideo.remove(); camVideo = null; }
+}
+
+$('btnCamera').addEventListener('click', async ()=>{
   getAudioCtx(); // unlock audio now, on the actual tap
   setTriggerIdle();
   openModal('overlayCamera');
   $('camStatus').textContent = 'Starting camera…';
-  Quagga.init({
-    inputStream:{ type:'LiveStream', target: document.querySelector('#cameraWrap'),
-      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} },
-      // Only look inside the amber box shown on screen — this is what
-      // actually stops background clutter (a busy floor, other packaging,
-      // shadows) from being mistaken for a barcode. Margins here match the
-      // .scan-frame CSS box (78% wide, 34% tall, centered) exactly.
-      area:{ top:'20%', right:'5%', left:'5%', bottom:'20%' },
-    },
-    decoder:{ readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','codabar_reader'] },
-    locate:true,
-  }, err=>{
-    if(err){ $('camStatus').textContent = 'Could not access camera: '+err.message; return; }
-    // The camera stream itself starts here and keeps running for the whole
-    // time this modal is open — it is never stopped/restarted between
-    // individual scans, since doing that turned out to be unreliable on
-    // iOS (that was the "camera won't reopen" bug). Only the *armed* flag
-    // above, gated by the Scan button, controls when a detection is
-    // actually acted on.
-    Quagga.start(); quaggaRunning = true;
+  stopCameraStream();
+  const session = camSession;
+  loadZXing().catch(()=>{}); // start fetching the reader alongside the camera
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('this browser has no camera access (use Safari or Chrome, over https)');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } },
+    });
+    if(session !== camSession){ stream.getTracks().forEach(t=>t.stop()); return; } // closed meanwhile
+    camStream = stream;
+    // Keep autofocus running where the phone lets us ask for it.
+    const track = stream.getVideoTracks()[0];
+    try{
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if(caps.focusMode && caps.focusMode.includes('continuous')){
+        await track.applyConstraints({ advanced:[{ focusMode:'continuous' }] });
+      }
+    }catch(e){}
+    const v = document.createElement('video');
+    v.setAttribute('playsinline',''); v.setAttribute('muted',''); v.muted = true; v.autoplay = true;
+    v.srcObject = stream;
+    $('cameraWrap').insertBefore(v, $('cameraWrap').firstChild);
+    camVideo = v;
+    try{ await v.play(); }catch(e){}
+    await loadZXing();
+    if(session !== camSession) return;
     $('camStatus').textContent = 'Point the barcode inside the box, then tap Scan';
-  });
-  let lastCode='', lastTime=0, candidateCode='', candidateCount=0;
-  Quagga.onDetected(data=>{
-    if(!scanArmed) return; // ignore everything unless the Scan button was actually pressed
-    const code = data.codeResult.code;
-    const now = Date.now();
-    if(code===lastCode && now-lastTime < 1500) return; // already acted on this one recently
-
-    if(!isValidGtinChecksum(code)){
-      // Failed its own check digit — almost certainly a misread. Ignore
-      // silently and keep scanning rather than acting on a wrong number.
-      candidateCode=''; candidateCount=0;
-      return;
-    }
-    // Require the same valid code twice in a row before acting on it —
-    // cheap extra insurance against the rare misread that happens to also
-    // pass the checksum by chance.
-    if(code === candidateCode){
-      candidateCount++;
-    } else {
-      candidateCode = code; candidateCount = 1;
-    }
-    if(candidateCount < 2){
-      $('camStatus').textContent = `Confirming: ${code}…`;
-      return;
-    }
-    lastCode = code; lastTime = now; candidateCode=''; candidateCount=0;
-
-    // One capture per tap — disarm immediately so nothing further gets
-    // added until you deliberately tap Scan again for the next item.
-    setTriggerIdle();
-    $('camStatus').textContent = `Detected: ${code}`;
-    handleScan(code);
-  });
+    if(scanArmed) startDecodeLoop(); // Scan was tapped while still loading
+  }catch(err){
+    if(session !== camSession) return;
+    const msg = err && err.name === 'NotAllowedError'
+      ? 'Camera permission was blocked. Allow camera access for this site in your browser settings, then try again.'
+      : 'Could not start the camera: ' + (err && err.message ? err.message : err);
+    $('camStatus').textContent = msg;
+  }
 });
 $('btnScanTrigger').addEventListener('click', ()=>{
   if(scanArmed){
     setTriggerIdle();
     $('camStatus').textContent = 'Cancelled — tap Scan when ready';
+  } else if(!camVideo || !zxReady){
+    setTriggerArmed(); // decoding starts as soon as the camera is ready
+    $('camStatus').textContent = 'Starting camera…';
   } else {
     setTriggerArmed();
   }
@@ -3246,7 +3368,7 @@ $('btnScanTrigger').addEventListener('click', ()=>{
 function closeCameraFn(){
   closeModal('overlayCamera');
   setTriggerIdle();
-  if(quaggaRunning){ Quagga.stop(); quaggaRunning=false; }
+  stopCameraStream();
 }
 $('btnCloseCamera').addEventListener('click', closeCameraFn);
 $('btnCloseCamera2').addEventListener('click', closeCameraFn);
