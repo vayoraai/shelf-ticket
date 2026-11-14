@@ -331,10 +331,20 @@ tbody tr.flash{animation:flashRow .9s;}
 #paperSample{overflow:auto;padding:8px;background:#ece7d9;border-radius:8px;}
 #paperSample .ticket-grid{background:#fff;display:inline-grid !important;}
 .paper-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
-.paper-tools input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;outline:none;}
+.paper-tools input{flex:1 1 100%;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;outline:none;}
 .paper-tools input:focus{border-color:var(--green-600);}
 .paper-chips{display:flex;gap:6px;flex-wrap:wrap;}
-.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+.preview-bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--cream);font-size:13px;color:var(--ink-soft);}
+.preview-bar .pb-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.preview-bar b{color:var(--ink);}
+.preview-bar .btn{padding:5px 10px;font-size:12.5px;}
+.slot-grid{display:inline-grid;gap:2px;padding:3px;background:#fff;border:1px solid var(--line);border-radius:4px;vertical-align:middle;}
+.slot-grid button{width:14px;height:9px;padding:0;border:1px solid #9fc4ae;background:#e6f0e8;border-radius:1px;cursor:pointer;}
+.slot-grid button.used{background:repeating-linear-gradient(45deg,#ddd 0 2px,#bbb 2px 3px);border-color:#bbb;}
+.slot-grid button.start{background:var(--green-700);border-color:var(--green-700);}
+.slot-grid button:hover{outline:2px solid var(--amber);}
+.slot-grid.tall button{height:14px;width:9px;}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:20px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
 .chip span{color:var(--ink-soft);font-weight:500;margin-left:2px;}
 .chip.on{background:var(--green-700);border-color:var(--green-700);color:#fff;}
 .chip.on span{color:#cfe8da;}
@@ -1024,6 +1034,12 @@ tbody tr.flash{animation:flashRow .9s;}
 <div class="overlay" id="overlayPreview">
   <div class="modal wide" style="max-width:900px;">
     <div class="modal-head"><h2>Preview — <span id="previewCount">0</span> tickets, <span id="previewPages">0</span> page(s)</h2><button class="icon-btn" data-close="overlayPreview">✕</button></div>
+    <div class="preview-bar" id="previewBar" style="display:none;">
+      <div class="pb-group">Shelf tag paper: <b id="previewPaperName">Plain A4</b> <button class="btn" id="btnPreviewPaper" type="button">🧾 Change paper</button></div>
+      <div class="pb-group" id="previewStartWrap">Start on ticket <b id="previewStartNum">1</b> <span id="previewSlotGrid" class="slot-grid" title="Tap the first unused ticket on your part-used sheet"></span>
+        <span class="hint" id="previewStartHint" style="margin:0;">Part-used sheet? Tap the first empty ticket.</span>
+        <button class="btn ghost" id="btnPreviewStartReset" type="button" style="display:none;">Use a full sheet</button></div>
+    </div>
     <div class="modal-body" style="background:#ece7d9;"><div id="previewInner"></div></div>
     <div class="modal-foot">
       <button class="btn ghost" data-close="overlayPreview">Back</button>
@@ -1063,7 +1079,7 @@ tbody tr.flash{animation:flashRow .9s;}
     <div class="modal-head"><h2>Choose your ticket paper</h2><button class="icon-btn" data-close="overlayPaper">✕</button></div>
     <div class="modal-body">
       <div id="paperGridWrap">
-        <p class="hint" style="margin:0 0 10px;">Pick the sheet that matches your paper. The drawings are to scale. Not sure? Count the tickets on one sheet and search for that number, e.g. "30".</p>
+        <p class="hint" style="margin:0 0 10px;"><b>Quickest:</b> type the code on your paper box (e.g. L7160 or 33UP). Or pick the kind of paper below, then the sheet that looks like yours. The drawings are to scale. No code? Count the tickets on one sheet and type that number, e.g. "30".</p>
         <div class="paper-tools">
           <input id="paperSearch" placeholder="Search — e.g. 30, 3x10, L7160, Vision, 70x27" autocomplete="off">
           <div class="paper-chips" id="paperChips"></div>
@@ -2711,13 +2727,14 @@ function renderQueue(){
   });
   updateQueueStats();
 }
-function countPages(list){
+function countPages(list, startSlot){
   let pages = 0;
   ['shelf','a7','a5','a4'].forEach(type=>{
     const items = list.filter(t=>(t.type||'shelf')===type);
     if(!items.length) return;
     const cfg = typeConfig(type);
-    pages += Math.ceil(items.length / (cfg.cols*cfg.rows));
+    const skip = type==='shelf' ? Math.max(0, (startSlot||1) - 1) : 0;
+    pages += Math.ceil((items.length + skip) / (cfg.cols*cfg.rows));
   });
   return pages;
 }
@@ -2861,12 +2878,7 @@ async function previewBatch(b){
     if(!list.length){ toast('This batch has no tickets', 'err'); return; }
     currentPreviewList = list;
     activePreviewBatchId = b.id;
-    $('previewCount').textContent = list.length;
-    $('previewPages').textContent = countPages(list);
-    $('previewInner').innerHTML = buildPagesHtml(list);
-    renderBarcodes($('previewInner'));
-    openModal('overlayPreview');
-    requestAnimationFrame(()=>{ fitAllTickets($('previewInner')); scalePreviewPages(); });
+    openPreview();
   }catch(e){ toast('Could not load batch: '+e.message, 'err'); }
 }
 
@@ -3582,9 +3594,11 @@ function renderPaperPicker(){
   const list = paperList().filter(p => (paperFilter === 'all' || p.group === paperFilter)
     && (!q || (p.label + ' ' + (p.code || '') + ' ' + paperLine(p) + ' ' + (p.short || '') + ' ' + paperCell(p).cols * paperCell(p).rows + 'up ' + paperCell(p).cols + '×' + paperCell(p).rows + ' ' + mm(paperCell(p).w) + '×' + mm(paperCell(p).h)).toLowerCase().includes(q)));
   const counts = Object.fromEntries(PAPER_GROUPS.map(([g]) => [g, paperList().filter(p => p.group === g).length]));
-  $('paperChips').innerHTML = [['all', 'All']].concat(PAPER_GROUPS.map(([g, l]) => [g, l.replace(/ \(.*\)| — .*/, '')])).filter(([g]) => g === 'all' || counts[g])
+  const TAB = { all:'All papers', cut:'🧾 Shelf ticket sheets', label:'🏷️ Label sheets (Avery)', plain:'📄 Plain A4 paper', mine:'⭐ My papers' };
+  $('paperChips').innerHTML = [['all', 'All']].concat(PAPER_GROUPS.map(([g, l]) => [g, l])).map(([g, l]) => [g, TAB[g] || l]).filter(([g]) => g === 'all' || counts[g])
     .map(([g, l]) => `<button type="button" class="chip${paperFilter === g ? ' on' : ''}" data-filter="${g}">${escapeHtml(l)}${g !== 'all' ? ` <span>${counts[g]}</span>` : ''}</button>`).join('');
   const cur = currentPaperKey();
+  list.sort((a, b) => (b.key === cur) - (a.key === cur)); // paper in use first
   const card = p => {
     const warn = paperNarrow(paperCell(p));
     return `<button type="button" class="paper-card${p.key === cur ? ' current' : ''}" data-key="${escapeHtml(p.key)}">
@@ -3622,6 +3636,7 @@ function choosePaper(p){
     if(p.cols){ settings.cols = p.cols; settings.rows = p.rows; }
     if(!isPlainKey(p.key)) Object.assign(settings, { ticketW: p.ticketW, ticketH: p.ticketH, marginTop: p.marginTop, marginLeft: p.marginLeft, gapX: p.gapX, gapY: p.gapY, offsetX: 0, offsetY: 0 });
     saveSettingsLocal(); renderQueue();
+    if($('overlayPreview').classList.contains('show')) refreshPreview();
     toast(`Shelf tag paper: ${p.short || p.label}` + (isPlainKey(p.key) ? '' : ' — print the alignment test once (Fields)'));
   }
   closeModal('overlayPaper');
@@ -3967,12 +3982,17 @@ function promoTicketHtml(p, type){
     <div class="t-bottom"><svg class="barcode-svg" id="${svgId}" data-code="${escapeHtml(p.barcode||'')}" data-type="${type}"></svg><div class="t-barcode-num">${escapeHtml(p.barcode||'')}</div></div>
   </div>`;
 }
-function buildPagesHtml(list){
+// startSlot (shelf tags only): print from this position on the first sheet,
+// leaving the earlier positions blank, so a part-used sheet of pre-cut
+// tickets or labels can go back in the printer.
+function buildPagesHtml(list, startSlot){
   let html = '';
   ['shelf','a7','a5','a4'].forEach(type=>{
-    const items = list.filter(t=>(t.type||'shelf')===type);
+    let items = list.filter(t=>(t.type||'shelf')===type);
     if(!items.length) return;
     const cfg = typeConfig(type);
+    const skip = type==='shelf' ? Math.max(0, Math.min((startSlot||1) - 1, cfg.cols*cfg.rows - 1)) : 0;
+    if(skip) items = Array(skip).fill(null).concat(items);
     const perPage = cfg.cols * cfg.rows;
     for(let i=0;i<items.length;i+=perPage){
       const chunk = items.slice(i, i+perPage);
@@ -3987,7 +4007,7 @@ function buildPagesHtml(list){
         const cellHtml = p => rotate
           ? `<div class="rot-cell">${ticketHtml(p).replace('<div class="ticket', `<div style="width:${cfg.ticketH}mm;height:${cfg.ticketW}mm;transform:translateY(${cfg.ticketH}mm) rotate(-90deg);" class="ticket`)}</div>`
           : ticketHtml(p);
-        const cells = chunk.map((p, i) => edgeCell(cellHtml(p), i, cfg, rotate)).join('');
+        const cells = chunk.map((p, i) => p ? edgeCell(cellHtml(p), i, cfg, rotate) : '<div></div>').join('');
         const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div></div>').join('') : '';
         const pageStyle = `padding:${cfg.marginTop+cfg.offsetY}mm ${cfg.marginLeft}mm 0 ${cfg.marginLeft+cfg.offsetX}mm;`;
         const gridStyle = `display:grid;grid-template-columns:repeat(${cfg.cols},${cfg.ticketW}mm);grid-template-rows:repeat(${cfg.rows},${cfg.ticketH}mm);gap:${cfg.gapY}mm ${cfg.gapX}mm;height:auto;width:auto;`;
@@ -4005,7 +4025,7 @@ function buildPagesHtml(list){
         const frameCls = cfg.landscape ? 'page-frame pf-landscape' : 'page-frame';
         html += `<div class="${frameCls}"><div class="page page-cut"><div class="ticket-grid ${cfg.cls} ${shelfSizeClass(type, cfg)}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div>${cuts}</div></div>`;
       } else {
-        const cells = chunk.map(ticketHtml).join('');
+        const cells = chunk.map(p => p ? ticketHtml(p) : '<div class="ticket" style="border:none;"></div>').join('');
         const fillerHtml = filler>0 ? Array.from({length:filler}).map(()=>'<div class="ticket" style="border:none;"></div>').join('') : '';
         html += `<div class="page-frame"><div class="page"><div class="ticket-grid ${cfg.cls} ${shelfSizeClass(type, cfg)}" style="--cols:${cfg.cols};--rows:${cfg.rows};">${cells}${fillerHtml}</div></div></div>`;
       }
@@ -4164,19 +4184,55 @@ $('btnPreview').addEventListener('click', ()=>{
   if(!list.length){ toast('Your queue is empty — add items first', 'err'); return; }
   currentPreviewList = list;
   activePreviewBatchId = null;
-  $('previewCount').textContent = list.length;
-  $('previewPages').textContent = countPages(list);
-  $('previewInner').innerHTML = buildPagesHtml(list);
-  renderBarcodes($('previewInner'));
+  openPreview();
+});
+// Start position on the first sheet (shelf tags). Back to 1 for every new preview.
+let previewStartSlot = 1;
+function openPreview(){
+  previewStartSlot = 1;
   openModal('overlayPreview');
+  refreshPreview();
+}
+function refreshPreview(){
+  const list = currentPreviewList;
+  const hasShelf = list.some(t => (t.type||'shelf') === 'shelf');
+  const cfg = typeConfig('shelf');
+  const perPage = cfg.cols * cfg.rows;
+  if(previewStartSlot > perPage) previewStartSlot = 1;
+  $('previewBar').style.display = hasShelf ? '' : 'none';
+  if(hasShelf){
+    const pk = paperByKey(settings.paperPreset || 'plain');
+    $('previewPaperName').textContent = pk ? (pk.short || pk.label) : 'Custom paper';
+    $('previewStartWrap').style.display = perPage > 1 ? '' : 'none';
+    $('previewStartNum').textContent = previewStartSlot + ' of ' + perPage;
+    const g = $('previewSlotGrid');
+    g.style.gridTemplateColumns = `repeat(${cfg.cols}, auto)`;
+    g.classList.toggle('tall', !!(cfg.fixed && cfg.ticketH > cfg.ticketW * 1.6));
+    let cells = '';
+    for(let i=1;i<=perPage;i++) cells += `<button type="button" data-slot="${i}" class="${i < previewStartSlot ? 'used' : i === previewStartSlot ? 'start' : ''}" title="Start on ticket ${i}"></button>`;
+    g.innerHTML = cells;
+    $('btnPreviewStartReset').style.display = previewStartSlot > 1 ? '' : 'none';
+    $('previewStartHint').style.display = previewStartSlot > 1 ? 'none' : '';
+  }
+  $('previewCount').textContent = list.length;
+  $('previewPages').textContent = countPages(list, previewStartSlot);
+  $('previewInner').innerHTML = buildPagesHtml(list, previewStartSlot);
+  renderBarcodes($('previewInner'));
   // Sizes are only knowable once the modal is actually laid out on screen,
   // so fit + scale on the next frame rather than immediately.
   requestAnimationFrame(()=>{ fitAllTickets($('previewInner')); scalePreviewPages(); });
+}
+$('previewSlotGrid').addEventListener('click', e=>{
+  const b = e.target.closest('[data-slot]'); if(!b) return;
+  previewStartSlot = parseInt(b.dataset.slot, 10) || 1;
+  refreshPreview();
 });
+$('btnPreviewStartReset').addEventListener('click', ()=>{ previewStartSlot = 1; refreshPreview(); });
+$('btnPreviewPaper').addEventListener('click', ()=> openPaperPicker('direct'));
 $('btnDoPrint').addEventListener('click', ()=>{
   const list = currentPreviewList.length ? currentPreviewList : buildTicketList();
   if(!list.length){ toast('Nothing to print', 'err'); return; }
-  renderPrintArea(list);
+  renderPrintArea(list, buildPagesHtml(list, previewStartSlot));
   // Must run synchronously, in the same tap — iOS Safari silently ignores
   // window.print() if it's deferred (even by a few ms via setTimeout),
   // since it no longer counts as a direct response to your tap.
