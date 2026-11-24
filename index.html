@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="/vt-analytics.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
@@ -817,15 +818,18 @@ tbody tr.flash{animation:flashRow .9s;}
 
 <!-- ============ Admin: cross-store reports ============ -->
 <div class="overlay" id="overlayAdminReports">
-  <div class="modal" style="max-width:920px;">
+  <div class="modal" style="max-width:1240px;">
     <div class="modal-head"><h2>Reports — all stores</h2><button class="icon-btn" data-close="overlayAdminReports">✕</button></div>
     <div class="modal-body">
       <div id="adminReportsLoading" style="text-align:center;padding:30px 0;color:var(--ink-soft);">Loading…</div>
       <div id="adminReportsContent" style="display:none;">
+        <p class="hint" id="adminReportsSummary" style="margin:0 0 10px;"></p>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Store</th><th>Catalog</th><th>Queued</th><th>Batches</th>
+              <th>Store</th><th>Registered</th><th>Source</th><th>Campaign</th><th>Plan</th><th>Trial ends</th><th>Converted</th>
+              <th>First import</th><th>First scan</th><th>First print</th>
+              <th>Catalog</th><th>Queued</th><th>Batches</th>
               <th>Tickets printed</th><th>New from scan</th><th>Active offers</th>
               <th>Owners</th><th>Staff</th><th>Last activity</th>
             </tr></thead>
@@ -1711,10 +1715,11 @@ async function loadAdminReports(){
     const rows = await Promise.all(storesSnap.docs.map(async storeDoc=>{
       const code = storeDoc.id;
       const data = storeDoc.data();
-      const [productsSnap, queueSnap, batchesSnap] = await Promise.all([
+      const [productsSnap, queueSnap, batchesSnap, staffSnap] = await Promise.all([
         getDocs(collection(db,'stores',code,'products')),
         getDocs(collection(db,'stores',code,'queue')),
         getDocs(collection(db,'stores',code,'batches')),
+        getDocs(collection(db,'stores',code,'staffProfiles')).catch(()=>({forEach(){}})),
       ]);
       let newFromScanCount = 0, lastActivity = data.createdAt||0;
       productsSnap.forEach(p=>{
@@ -1737,12 +1742,27 @@ async function loadAdminReports(){
         if((bd.createdAt||0) > lastActivity) lastActivity = bd.createdAt;
         if((bd.printedAt||0) > lastActivity) lastActivity = bd.printedAt;
       });
+      // Setup milestones: earliest of the owner's (store doc) and any staff member's.
+      const ms = { ...(data.milestones||{}) };
+      staffSnap.forEach(sp=>{
+        const m = (sp.data()||{}).milestones || {};
+        ['firstImportAt','firstScanAt','firstPrintAt'].forEach(k=>{ if(m[k] && (!ms[k] || m[k] < ms[k])) ms[k] = m[k]; });
+      });
+      const plan = data.plan || null;
+      const registered = data.createdAt || (plan && plan.trialStartedAt) || null;
       return {
         code, name: data.name||code,
         catalog: productsSnap.size, queued: queueSnap.size, batches: batchesSnap.size,
         ticketsPrinted, newFromScan: newFromScanCount, activeOffers: activeOffersCount,
         owners: (data.members||[]).length, staff: (data.staffUids||[]).length,
         lastActivity,
+        registered,
+        tracked: !!registered && registered >= TRACKING_START,
+        acquisition: data.acquisition || null,
+        planStatus: plan ? plan.status : 'legacy',
+        trialEndsAt: plan && plan.trialEndsAt || null,
+        billingStatus: (data.billing||{}).status || '',
+        firstImportAt: ms.firstImportAt||null, firstScanAt: ms.firstScanAt||null, firstPrintAt: ms.firstPrintAt||null,
       };
     }));
     rows.sort((a,b)=> b.lastActivity - a.lastActivity);
@@ -1754,19 +1774,56 @@ async function loadAdminReports(){
     $('adminReportsLoading').textContent = 'Could not load reports: '+e.message;
   }
 }
+// Attribution and first-import/scan/print dates are recorded from this date
+// on. Older stores show "not tracked" instead of a guessed date.
+const TRACKING_START = Date.UTC(2026, 10, 24, 13, 0, 0); // 25 Nov 2026 00:00 Sydney
+const PLAN_LABELS = { trialing:'Trial', active:'Paid', comped:'Complimentary', payment_required:'Unpaid', legacy:'Legacy (no plan)' };
+function reportPlanLabel(r){
+  let l = PLAN_LABELS[r.planStatus] || r.planStatus || '—';
+  if(r.planStatus==='trialing' && r.trialEndsAt && r.trialEndsAt < Date.now()) l = 'Trial ended';
+  if(r.planStatus==='active' && r.billingStatus==='past_due') l = 'Paid (past due)';
+  return l;
+}
+function reportConverted(r){
+  if(r.planStatus==='active') return 'Yes';
+  if(r.planStatus==='trialing' && !(r.trialEndsAt && r.trialEndsAt < Date.now())) return 'In trial';
+  if(r.planStatus==='comped' || r.planStatus==='legacy') return 'n/a';
+  return 'No';
+}
+function reportSource(r){
+  const a = r.acquisition;
+  if(!a) return r.tracked ? '(not recorded)' : 'not tracked';
+  return [a.source, a.medium && a.medium!=='(none)' ? a.medium : ''].filter(Boolean).join(' / ') + (a.referred ? ' · referred' : '');
+}
+function reportMs(r, k){ return r[k] ? new Date(r[k]).toLocaleDateString() : (r.tracked ? '—' : 'not tracked'); }
 function renderAdminReportsTable(rows){
   const body = $('adminReportsBody');
   body.innerHTML = '';
+  const fmt = t => t ? new Date(t).toLocaleDateString() : '—';
   rows.forEach(r=>{
     const tr = document.createElement('tr');
-    const when = r.lastActivity ? new Date(r.lastActivity).toLocaleDateString() : '—';
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(r.name)}<small>${escapeHtml(r.code)}</small></td>
+      <td>${fmt(r.registered)}</td>
+      <td>${escapeHtml(reportSource(r))}</td><td>${escapeHtml((r.acquisition&&r.acquisition.campaign)||'—')}</td>
+      <td>${escapeHtml(reportPlanLabel(r))}</td><td>${r.planStatus==='trialing'?fmt(r.trialEndsAt):'—'}</td>
+      <td>${escapeHtml(reportConverted(r))}</td>
+      <td>${reportMs(r,'firstImportAt')}</td><td>${reportMs(r,'firstScanAt')}</td><td>${reportMs(r,'firstPrintAt')}</td>
       <td>${r.catalog}</td><td>${r.queued}</td><td>${r.batches}</td>
       <td>${r.ticketsPrinted}</td><td>${r.newFromScan||'—'}</td><td>${r.activeOffers||'—'}</td>
-      <td>${r.owners}</td><td>${r.staff||'—'}</td><td>${when}</td>`;
+      <td>${r.owners}</td><td>${r.staff||'—'}</td><td>${fmt(r.lastActivity)}</td>`;
     body.appendChild(tr);
   });
+  // One-line funnel summary (store counts only; revenue lives in Stripe).
+  const n = rows.length, cnt = f => rows.filter(f).length;
+  const paid = cnt(r=>r.planStatus==='active');
+  const inTrial = cnt(r=>reportConverted(r)==='In trial');
+  const ended = cnt(r=>reportConverted(r)==='No');
+  const decided = paid + ended;
+  $('adminReportsSummary').textContent =
+    `${n} store${n===1?'':'s'} · ${inTrial} in trial · ${paid} paid · ${ended} trial ended unpaid`
+    + (decided ? ` · trial-to-paid ${Math.round(paid*100/decided)}% of finished trials` : '')
+    + ` · imported ${cnt(r=>r.firstImportAt)} · scanned ${cnt(r=>r.firstScanAt)} · printed ${cnt(r=>r.firstPrintAt)} (tracked from 25 Nov 2026). Revenue: see Stripe.`;
 }
 $('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
 
@@ -1881,7 +1938,21 @@ $('btnDownloadBackupXlsx').addEventListener('click', ()=>{
 $('btnRefreshAdminReports').addEventListener('click', loadAdminReports);
 function adminReportRowsForExport(){
   return lastAdminReportRows.map(r=>({
-    Store: r.name, Code: r.code, Catalog: r.catalog, Queued: r.queued, Batches: r.batches,
+    Store: r.name, Code: r.code,
+    Registered: r.registered ? new Date(r.registered).toISOString().slice(0,10) : '',
+    Source: r.acquisition ? (r.acquisition.source||'') : (r.tracked ? '' : 'not tracked'),
+    Medium: r.acquisition ? (r.acquisition.medium||'') : '',
+    Campaign: r.acquisition ? (r.acquisition.campaign||'') : '',
+    'Campaign Content': r.acquisition ? (r.acquisition.content||'') : '',
+    Referrer: r.acquisition ? (r.acquisition.referrer||'') : '',
+    Referred: r.acquisition ? (r.acquisition.referred ? 'yes' : 'no') : '',
+    Plan: reportPlanLabel(r),
+    'Trial Ends': r.trialEndsAt ? new Date(r.trialEndsAt).toISOString().slice(0,10) : '',
+    Converted: reportConverted(r),
+    'First Import': r.firstImportAt ? new Date(r.firstImportAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
+    'First Scan': r.firstScanAt ? new Date(r.firstScanAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
+    'First Print': r.firstPrintAt ? new Date(r.firstPrintAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
+    Catalog: r.catalog, Queued: r.queued, Batches: r.batches,
     'Tickets Printed': r.ticketsPrinted, 'New From Scan': r.newFromScan, 'Active Offers': r.activeOffers,
     Owners: r.owners, Staff: r.staff,
     'Last Activity': r.lastActivity ? new Date(r.lastActivity).toISOString().slice(0,10) : '',
@@ -1968,6 +2039,10 @@ $('btnCreateStore').addEventListener('click', async ()=>{
     const res = await httpsCallable(fns, 'startTrial')({ storeName: name, abn, deviceId: deviceId(), ref: pendingRef() || undefined });
     const r = res.data || {};
     try{ localStorage.removeItem('vt-ref'); }catch(e){}
+    // Campaign attribution and analytics: never blocks entering the store.
+    if(r.code) recordAcquisition(r.code, r.referral==='pending');  // not awaited: never delays entering the store
+    vtEvent('sign_up', { method: r.referral==='pending' ? 'referral' : 'email' });
+    if(r.status==='trialing') vtEvent('trial_start', {});
     if(r.status==='trialing') toast(`Your ${r.referral==='pending' ? 60 : 30}-day free trial has started`);
     enterStore(r.code);
   }catch(e){
@@ -2074,6 +2149,48 @@ async function enterStore(code){
   loadSettingsLocal();
   applyPlanState();
 }
+/* ===================== Attribution & setup milestones (Nov 2026) ===================== */
+// Nothing personal is recorded here or sent to Google Analytics — only
+// campaign tags, the referring website's domain, and dates.
+function vtEvent(name, params){ try{ if(window.vtTrack) window.vtTrack(name, params||{}); }catch(e){} }
+// Which campaign brought a new store. Written once, right after the trial
+// starts, by the new owner (a store member). 'acquisition' is not one of
+// the protected fields in the security rules, so no rule change is needed.
+async function recordAcquisition(code, referred){
+  try{
+    const a = (window.vtAttribution && window.vtAttribution()) || {};
+    const s = v => String(v||'').slice(0,100);
+    const acq = {
+      recordedAt: Date.now(),
+      source: s(a.source) || '(direct)', medium: s(a.medium) || '(none)',
+      campaign: s(a.campaign), content: s(a.content), term: s(a.term),
+      referrer: s(a.referrer), landing: s(a.landing), referred: !!referred,
+    };
+    await updateDoc(doc(db,'stores',code), { acquisition: acq });
+  }catch(e){ /* attribution is nice-to-have; never block sign-up */ }
+}
+// First import / first scan / first print for each store, recorded once,
+// from 25 Nov 2026 onwards (older stores show "not tracked" in Reports).
+// Owners write store.milestones.*; staff can't change the store doc, so
+// their firsts go on their own staffProfiles entry. Reports uses the earliest.
+const MILESTONE_EVENTS = { firstImportAt:'first_import', firstScanAt:'first_scan', firstPrintAt:'first_print' };
+function recordMilestone(key){
+  try{
+    if(!storeCode || !currentUser || !currentStoreData) return;
+    if((currentStoreData.milestones||{})[key]) return;
+    const flag = 'vt-ms-'+storeCode+'-'+key;
+    if(localStorage.getItem(flag)) return;
+    const uid = currentUser.uid, now = Date.now();
+    let write;
+    if((currentStoreData.members||[]).includes(uid)) write = updateDoc(doc(db,'stores',storeCode), { ['milestones.'+key]: now });
+    else if(isStaffSession) write = setDoc(doc(db,'stores',storeCode,'staffProfiles',uid), { milestones: { [key]: now } }, {merge:true});
+    else return; // an admin looking at someone else's store doesn't count
+    try{ localStorage.setItem(flag,'1'); }catch(e){}
+    write.then(()=> vtEvent(MILESTONE_EVENTS[key], {}))
+         .catch(()=>{ try{ localStorage.removeItem(flag); }catch(e){} });
+  }catch(e){}
+}
+
 // Shows the trial badge, or swaps the app for the payment page once the
 // trial is over. The database enforces the same rule, so this is the
 // friendly face of it, not the lock itself.
@@ -2133,7 +2250,7 @@ function applyPlanState(){
   if(!q) return;
   history.replaceState(null, '', location.pathname);
   setTimeout(()=>{
-    if(q==='success') toast('Payment received — thank you! Unlocking your store…');
+    if(q==='success'){ toast('Payment received — thank you! Unlocking your store…'); vtEvent('subscription_started', {}); }
     else toast('Checkout cancelled — no payment was taken.');
   }, 800);
 })();
@@ -3058,6 +3175,7 @@ $('btnConfirmImport').addEventListener('click', async ()=>{
   try{
     await Promise.all(commits);
     closeModal('overlayImport');
+    if(added+updated > 0) recordMilestone('firstImportAt');
     const dupNote = fileDupes ? ` — ${fileDupes} row(s) shared a barcode with another row in the file; the last one won` : '';
     const removeNote = removed ? `, ${removed} removed` : '';
     toast(`Imported: ${added} added, ${updated} updated${skipped?`, ${skipped} skipped`:''}${removeNote}${dupNote}`, fileDupes?'warn':undefined);
@@ -3123,6 +3241,7 @@ async function handleScan(code){
   if(p){
     playSuccessBeep();
     const ref = await addToQueue(p, 1, bay, type);
+    recordMilestone('firstScanAt');
     toast(`Added to queue — ${p.name}${bay?` (${bay})`:''}`);
     $('tabQueue').click();
     maybePromptOffer(ref, type);
@@ -4237,6 +4356,7 @@ $('btnDoPrint').addEventListener('click', ()=>{
   // window.print() if it's deferred (even by a few ms via setTimeout),
   // since it no longer counts as a direct response to your tap.
   window.print();
+  recordMilestone('firstPrintAt');
   if(activePreviewBatchId){
     const batchId = activePreviewBatchId;
     activePreviewBatchId = null;
