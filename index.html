@@ -494,7 +494,7 @@ tbody tr.flash{animation:flashRow .9s;}
     </div>
     <div id="storeCreatePane">
       <div class="field"><label>Store name</label><input id="newStoreName" placeholder="e.g. Green Valley Grocers"></div>
-      <div class="field"><label>ABN</label><input id="newStoreAbn" inputmode="numeric" placeholder="11 digits, e.g. 51 824 753 556"></div>
+      <div class="field"><label for="newStoreAbn">ABN</label><input id="newStoreAbn" inputmode="numeric" placeholder="11 digits, e.g. 51 824 753 556" aria-describedby="abnHelp"><p class="hint" id="abnHelp" style="margin-top:6px;">Used only to give each business one free trial. Not sure of your ABN? <a href="https://abr.business.gov.au/" target="_blank" rel="noopener">Look it up on ABN Lookup</a>.</p></div>
       <button class="btn primary" style="width:100%;justify-content:center;" id="btnCreateStore">Start 30-day free trial</button>
       <p class="hint" style="margin-top:8px;" id="createTrialHint">One free trial per business. No card needed. Then A$25/month — launch offer A$10/month for your first 3 months.</p>
     </div>
@@ -827,8 +827,8 @@ tbody tr.flash{animation:flashRow .9s;}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Store</th><th>Registered</th><th>Source</th><th>Campaign</th><th>Plan</th><th>Trial ends</th><th>Converted</th>
-              <th>First import</th><th>First scan</th><th>First print</th>
+              <th>Store</th><th>Registered</th><th>First touch</th><th>Last touch</th><th>Sample ticket first</th><th>Plan</th><th>Trial ends</th><th>Converted</th>
+              <th>First import</th><th>First scan</th><th>First print requested</th>
               <th>Catalog</th><th>Queued</th><th>Batches</th>
               <th>Tickets printed</th><th>New from scan</th><th>Active offers</th>
               <th>Owners</th><th>Staff</th><th>Last activity</th>
@@ -1762,6 +1762,9 @@ async function loadAdminReports(){
         planStatus: plan ? plan.status : 'legacy',
         trialEndsAt: plan && plan.trialEndsAt || null,
         billingStatus: (data.billing||{}).status || '',
+        everSubscribed: !!(data.billing||{}).everSubscribed,
+        cancelAtPeriodEnd: !!(data.billing||{}).cancelAtPeriodEnd,
+        currentPeriodEnd: (data.billing||{}).currentPeriodEnd || null,
         firstImportAt: ms.firstImportAt||null, firstScanAt: ms.firstScanAt||null, firstPrintAt: ms.firstPrintAt||null,
       };
     }));
@@ -1777,24 +1780,37 @@ async function loadAdminReports(){
 // Attribution and first-import/scan/print dates are recorded from this date
 // on. Older stores show "not tracked" instead of a guessed date.
 const TRACKING_START = Date.UTC(2026, 10, 24, 13, 0, 0); // 25 Nov 2026 00:00 Sydney
-const PLAN_LABELS = { trialing:'Trial', active:'Paid', comped:'Complimentary', payment_required:'Unpaid', legacy:'Legacy (no plan)' };
+const PLAN_LABELS = { trialing:'Trial', active:'Paid', comped:'Complimentary', payment_required:'Subscription needed (no trial)', legacy:'Legacy (no plan)' };
+// Plan and billing fields are written by startTrial and the Stripe webhook;
+// this screen only reads them. Stripe stays the source of truth for revenue.
 function reportPlanLabel(r){
   let l = PLAN_LABELS[r.planStatus] || r.planStatus || '—';
-  if(r.planStatus==='trialing' && r.trialEndsAt && r.trialEndsAt < Date.now()) l = 'Trial ended';
-  if(r.planStatus==='active' && r.billingStatus==='past_due') l = 'Paid (past due)';
+  if(r.planStatus==='trialing' && r.trialEndsAt && r.trialEndsAt < Date.now()) l = 'Trial ended, not subscribed';
+  if(r.planStatus==='active' && r.billingStatus==='past_due') l = 'Paid (payment failed)';
+  else if(r.planStatus==='active' && r.cancelAtPeriodEnd) l = 'Cancelling' + (r.currentPeriodEnd ? ' (ends ' + new Date(r.currentPeriodEnd).toLocaleDateString() + ')' : '');
+  if(r.planStatus!=='active' && r.planStatus!=='comped' && r.everSubscribed) l = 'Cancelled';
   return l;
 }
 function reportConverted(r){
-  if(r.planStatus==='active') return 'Yes';
+  if(r.planStatus==='active' || r.everSubscribed) return 'Yes';
   if(r.planStatus==='trialing' && !(r.trialEndsAt && r.trialEndsAt < Date.now())) return 'In trial';
   if(r.planStatus==='comped' || r.planStatus==='legacy') return 'n/a';
   return 'No';
 }
+function touchText(t){ return t ? [t.source||'(direct)', t.medium && t.medium!=='(none)' ? t.medium : '', t.campaign||''].filter(Boolean).join(' / ') : ''; }
 function reportSource(r){
   const a = r.acquisition;
   if(!a) return r.tracked ? '(not recorded)' : 'not tracked';
-  return [a.source, a.medium && a.medium!=='(none)' ? a.medium : ''].filter(Boolean).join(' / ') + (a.referred ? ' · referred' : '');
+  if(a.consent && a.consent!=='granted' && !a.lastTouch) return 'no consent' + (a.referred ? ' · referred' : '');
+  const t = a.lastTouch || (a.source ? a : null);
+  return (touchText(t) || '(direct)') + (a.referred ? ' · referred' : '');
 }
+function reportFirstTouch(r){
+  const a = r.acquisition;
+  if(!a) return r.tracked ? '' : 'not tracked';
+  return touchText(a.firstTouch) || (a.consent && a.consent!=='granted' ? 'no consent' : '');
+}
+function reportSample(r){ const a = r.acquisition; return a && a.sampleTicket ? 'Yes' : (a ? 'No' : (r.tracked ? '' : 'not tracked')); }
 function reportMs(r, k){ return r[k] ? new Date(r[k]).toLocaleDateString() : (r.tracked ? '—' : 'not tracked'); }
 function renderAdminReportsTable(rows){
   const body = $('adminReportsBody');
@@ -1805,7 +1821,7 @@ function renderAdminReportsTable(rows){
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(r.name)}<small>${escapeHtml(r.code)}</small></td>
       <td>${fmt(r.registered)}</td>
-      <td>${escapeHtml(reportSource(r))}</td><td>${escapeHtml((r.acquisition&&r.acquisition.campaign)||'—')}</td>
+      <td>${escapeHtml(reportFirstTouch(r)||'—')}</td><td>${escapeHtml(reportSource(r))}</td><td>${escapeHtml(reportSample(r)||'—')}</td>
       <td>${escapeHtml(reportPlanLabel(r))}</td><td>${r.planStatus==='trialing'?fmt(r.trialEndsAt):'—'}</td>
       <td>${escapeHtml(reportConverted(r))}</td>
       <td>${reportMs(r,'firstImportAt')}</td><td>${reportMs(r,'firstScanAt')}</td><td>${reportMs(r,'firstPrintAt')}</td>
@@ -1818,12 +1834,16 @@ function renderAdminReportsTable(rows){
   const n = rows.length, cnt = f => rows.filter(f).length;
   const paid = cnt(r=>r.planStatus==='active');
   const inTrial = cnt(r=>reportConverted(r)==='In trial');
-  const ended = cnt(r=>reportConverted(r)==='No');
+  const ended = cnt(r=>reportConverted(r)==='No' && r.planStatus==='trialing');
+  const cancelled = cnt(r=>reportPlanLabel(r)==='Cancelled' || /^Cancelling/.test(reportPlanLabel(r)));
+  const fromSample = rows.filter(r=>r.acquisition && r.acquisition.sampleTicket);
   const decided = paid + ended;
   $('adminReportsSummary').textContent =
-    `${n} store${n===1?'':'s'} · ${inTrial} in trial · ${paid} paid · ${ended} trial ended unpaid`
+    `${n} store${n===1?'':'s'} · ${inTrial} in trial · ${paid} paid · ${ended} trial ended unpaid · ${cancelled} cancelled or cancelling`
     + (decided ? ` · trial-to-paid ${Math.round(paid*100/decided)}% of finished trials` : '')
-    + ` · imported ${cnt(r=>r.firstImportAt)} · scanned ${cnt(r=>r.firstScanAt)} · printed ${cnt(r=>r.firstPrintAt)} (tracked from 25 Nov 2026). Revenue: see Stripe.`;
+    + ` · imported ${cnt(r=>r.firstImportAt)} · scanned ${cnt(r=>r.firstScanAt)} · print requested ${cnt(r=>r.firstPrintAt)}`
+    + ` · made a sample ticket first: ${fromSample.length} (${fromSample.filter(r=>reportConverted(r)==='Yes').length} paid)`
+    + ` (tracked from 25 Nov 2026). Revenue: see Stripe.`;
 }
 $('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
 
@@ -1940,18 +1960,21 @@ function adminReportRowsForExport(){
   return lastAdminReportRows.map(r=>({
     Store: r.name, Code: r.code,
     Registered: r.registered ? new Date(r.registered).toISOString().slice(0,10) : '',
-    Source: r.acquisition ? (r.acquisition.source||'') : (r.tracked ? '' : 'not tracked'),
-    Medium: r.acquisition ? (r.acquisition.medium||'') : '',
-    Campaign: r.acquisition ? (r.acquisition.campaign||'') : '',
-    'Campaign Content': r.acquisition ? (r.acquisition.content||'') : '',
-    Referrer: r.acquisition ? (r.acquisition.referrer||'') : '',
+    'First Touch': reportFirstTouch(r),
+    'Last Touch': reportSource(r),
+    'Last Touch Source': r.acquisition && r.acquisition.lastTouch ? (r.acquisition.lastTouch.source||'') : '',
+    'Last Touch Medium': r.acquisition && r.acquisition.lastTouch ? (r.acquisition.lastTouch.medium||'') : '',
+    'Last Touch Campaign': r.acquisition && r.acquisition.lastTouch ? (r.acquisition.lastTouch.campaign||'') : '',
+    'Last Touch Content': r.acquisition && r.acquisition.lastTouch ? (r.acquisition.lastTouch.content||'') : '',
+    'Analytics Consent': r.acquisition ? (r.acquisition.consent||'') : '',
     Referred: r.acquisition ? (r.acquisition.referred ? 'yes' : 'no') : '',
+    'Sample Ticket First': reportSample(r),
     Plan: reportPlanLabel(r),
     'Trial Ends': r.trialEndsAt ? new Date(r.trialEndsAt).toISOString().slice(0,10) : '',
     Converted: reportConverted(r),
     'First Import': r.firstImportAt ? new Date(r.firstImportAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
     'First Scan': r.firstScanAt ? new Date(r.firstScanAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
-    'First Print': r.firstPrintAt ? new Date(r.firstPrintAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
+    'First Print Requested': r.firstPrintAt ? new Date(r.firstPrintAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
     Catalog: r.catalog, Queued: r.queued, Batches: r.batches,
     'Tickets Printed': r.ticketsPrinted, 'New From Scan': r.newFromScan, 'Active Offers': r.activeOffers,
     Owners: r.owners, Staff: r.staff,
@@ -2041,7 +2064,7 @@ $('btnCreateStore').addEventListener('click', async ()=>{
     try{ localStorage.removeItem('vt-ref'); }catch(e){}
     // Campaign attribution and analytics: never blocks entering the store.
     if(r.code) recordAcquisition(r.code, r.referral==='pending');  // not awaited: never delays entering the store
-    vtEvent('sign_up', { method: r.referral==='pending' ? 'referral' : 'email' });
+    vtEvent('sign_up', { method: r.referral==='pending' ? 'referral' : 'email', sample_used: (()=>{ try{ const a = window.vtAttribution && window.vtAttribution(); return a && a.sample ? 'yes' : 'no'; }catch(e){ return 'no'; } })() });
     if(r.status==='trialing') vtEvent('trial_start', {});
     if(r.status==='trialing') toast(`Your ${r.referral==='pending' ? 60 : 30}-day free trial has started`);
     enterStore(r.code);
@@ -2158,13 +2181,20 @@ function vtEvent(name, params){ try{ if(window.vtTrack) window.vtTrack(name, par
 // the protected fields in the security rules, so no rule change is needed.
 async function recordAcquisition(code, referred){
   try{
-    const a = (window.vtAttribution && window.vtAttribution()) || {};
+    const consent = (window.vtConsent && window.vtConsent()) || '';
+    const a = consent==='granted' && window.vtAttribution ? (window.vtAttribution() || {}) : {};
     const s = v => String(v||'').slice(0,100);
+    const touch = t => t ? { source:s(t.source), medium:s(t.medium), campaign:s(t.campaign), content:s(t.content), term:s(t.term), referrer:s(t.referrer), landing:s(t.landing), at: Number(t.at)||null } : null;
+    const ft = touch(a.ft), lt = touch(a.lt);
+    // Campaign details are only kept when the visitor accepted analytics
+    // cookies; otherwise only the consent state and the referral flag.
     const acq = {
-      recordedAt: Date.now(),
-      source: s(a.source) || '(direct)', medium: s(a.medium) || '(none)',
-      campaign: s(a.campaign), content: s(a.content), term: s(a.term),
-      referrer: s(a.referrer), landing: s(a.landing), referred: !!referred,
+      recordedAt: Date.now(), consent: consent==='granted' ? 'granted' : (consent==='denied' ? 'declined' : 'not_given'),
+      referred: !!referred,
+      source: lt ? (lt.source || '(direct)') : (consent==='granted' ? '(direct)' : ''),
+      medium: lt ? (lt.medium || '(none)') : '', campaign: lt ? lt.campaign : '',
+      firstTouch: ft, lastTouch: lt,
+      sampleTicket: a.sample ? { at: Number(a.sample.at)||null, format: s(a.sample.format) } : null,
     };
     await updateDoc(doc(db,'stores',code), { acquisition: acq });
   }catch(e){ /* attribution is nice-to-have; never block sign-up */ }
@@ -2173,7 +2203,9 @@ async function recordAcquisition(code, referred){
 // from 25 Nov 2026 onwards (older stores show "not tracked" in Reports).
 // Owners write store.milestones.*; staff can't change the store doc, so
 // their firsts go on their own staffProfiles entry. Reports uses the earliest.
-const MILESTONE_EVENTS = { firstImportAt:'first_import', firstScanAt:'first_scan', firstPrintAt:'first_print' };
+// firstPrintAt = the first time Print was pressed (the browser print dialog
+// opened). It does not confirm that paper came out of a printer.
+const MILESTONE_EVENTS = { firstImportAt:'first_import', firstScanAt:'first_scan', firstPrintAt:'first_print_requested' };
 function recordMilestone(key){
   try{
     if(!storeCode || !currentUser || !currentStoreData) return;
@@ -2222,6 +2254,9 @@ function applyPlanState(){
     badge.style.display = 'none';
   }
   const lock = st.locked && !isAdminUser;
+  if(lock && st.status==='trial_ended' && !isStaffSession){
+    try{ const k='vt-ev-trialend-'+storeCode; if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); vtEvent('trial_expired_paywall_view', {}); } }catch(e){}
+  }
   if(lock){
     $('paywallTitle').textContent = st.status==='payment_required' ? 'Subscribe to start using Vayora Tickets' : 'Your free trial has ended';
     $('paywallSub').textContent = st.status==='payment_required'
