@@ -129,6 +129,7 @@
     // 'set' makes the cleaned page_location / page_referrer apply to EVERY
     // event (page_view, scroll, outbound clicks, ours), not just the config hit.
     var base = { page_location: cfg.page_location };
+    if (cfg.traffic_type) base.traffic_type = cfg.traffic_type;
     if (cfg.page_referrer) base.page_referrer = cfg.page_referrer;
     gtag('set', base);
     // Note: the Google tag's automatic page_view still reads the browser URL.
@@ -216,13 +217,15 @@
   }, true);
 
   /* ---------- start ---------- */
-  // ?vt_internal=1 marks this browser as Vayora's own (filtered out of GA);
-  // ?vt_internal=0 clears it. Admin sign-ins in the app set it automatically.
+  // ?vt_internal=1 marks this browser as Vayora's own; ?vt_internal=0 clears
+  // it. Admin sign-ins and test stores in the app set it automatically.
+  // Internal browsers never load GA at all, so they can't affect the figures.
   try {
     var iq = new URLSearchParams(location.search).get('vt_internal');
     if (iq === '1') setCookie(INTERNAL_COOKIE, '1', 400);
     if (iq === '0') delCookie(INTERNAL_COOKIE);
   } catch (e) {}
+  if (getCookie(INTERNAL_COOKIE) === '1') GA_ON = false;
   pendingTouch = readTouch();
   if (GA_ON) {
     var c = getCookie(CONSENT_COOKIE);
@@ -233,7 +236,14 @@
   window.vtTrack = track;
   window.vtAttribution = readAttribution;
   window.vtMarkSample = markSample;
-  window.vtMarkInternal = function () { try { if (getCookie(INTERNAL_COOKIE) !== '1') setCookie(INTERNAL_COOKIE, '1', 400); } catch (e) {} };
+  window.vtMarkInternal = function () {
+    try {
+      if (getCookie(INTERNAL_COOKIE) !== '1') setCookie(INTERNAL_COOKIE, '1', 400);
+      GA_ON = false;
+      if (gaLoaded) window['ga-disable-' + GA_ID] = true;   // stop sending for the rest of this page
+      var b = document.getElementById('vt-consent'); if (b) b.remove();
+    } catch (e) {}
+  };
   window.vtConsent = function () { return getCookie(CONSENT_COOKIE); };
   window.vtOpenConsent = openConsent;
 })();
