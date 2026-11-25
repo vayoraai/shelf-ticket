@@ -121,11 +121,11 @@
     var base = { page_location: cfg.page_location };
     if (cfg.page_referrer) base.page_referrer = cfg.page_referrer;
     gtag('set', base);
-    // The automatic page_view uses the raw browser URL, so turn it off and
-    // send our own with the cleaned URL.
-    cfg.send_page_view = false;
+    // Note: the Google tag's automatic page_view still reads the browser URL.
+    // The app's own URL parameters carry no personal data, and the GA4 stream
+    // has Data redaction switched on for emails and for named query
+    // parameters (see the change log) as a second safeguard.
     gtag('config', GA_ID, cfg);
-    gtag('event', 'page_view', { page_location: base.page_location, page_referrer: base.page_referrer, page_title: document.title });
     var s = document.createElement('script');
     s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
     document.head.appendChild(s);
