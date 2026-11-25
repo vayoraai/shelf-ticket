@@ -1802,7 +1802,7 @@ function reportPlanLabel(r){
   if(r.planStatus==='active' && !r.billingMode) l = 'Paid (manual)';
   if(r.planStatus!=='active' && r.planStatus!=='comped' && r.everSubscribed) l = 'Cancelled';
   if(reportSandbox(r)) l = 'Sandbox · ' + l + ' (test card, not revenue)';
-  if(r.isTest) l = (r.testKind==='test' ? 'TEST store' : 'Internal store') + ' · ' + l + (r.everSubscribed && !reportSandbox(r) ? ' (sandbox, not revenue)' : '');
+  if(r.isTest) l = (r.testKind==='test' ? 'TEST store' : 'Internal store') + ' · ' + l + (r.everSubscribed && !reportSandbox(r) ? (r.billingMode==='live' ? ' (own test payment, refunded — not revenue)' : ' (sandbox, not revenue)') : '');
   return l;
 }
 function reportConverted(r){
