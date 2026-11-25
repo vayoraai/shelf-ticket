@@ -116,6 +116,11 @@
     // can carry personal details in its URL).
     try { if (document.referrer) { var ru = new URL(document.referrer); cfg.page_referrer = ru.origin + ru.pathname; } } catch (e) {}
     if (getCookie(INTERNAL_COOKIE) === '1') cfg.traffic_type = 'internal';
+    // 'set' makes the cleaned page_location / page_referrer apply to EVERY
+    // event (page_view, scroll, outbound clicks, ours), not just the config hit.
+    var base = { page_location: cfg.page_location };
+    if (cfg.page_referrer) base.page_referrer = cfg.page_referrer;
+    gtag('set', base);
     gtag('config', GA_ID, cfg);
     var s = document.createElement('script');
     s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
