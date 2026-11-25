@@ -114,7 +114,14 @@
     };
     // Referrer without its query string (a link from an email or search page
     // can carry personal details in its URL).
-    try { if (document.referrer) { var ru = new URL(document.referrer); cfg.page_referrer = ru.origin + ru.pathname; } } catch (e) {}
+    try {
+      if (document.referrer) {
+        var ru = new URL(document.referrer);
+        // Coming back from Stripe checkout is the same visit, not a new referral.
+        if (/(^|\.)stripe\.com$/.test(ru.hostname)) cfg.ignore_referrer = true;
+        else cfg.page_referrer = ru.origin + ru.pathname;
+      }
+    } catch (e) {}
     if (getCookie(INTERNAL_COOKIE) === '1') cfg.traffic_type = 'internal';
     // 'set' makes the cleaned page_location / page_referrer apply to EVERY
     // event (page_view, scroll, outbound clicks, ours), not just the config hit.
