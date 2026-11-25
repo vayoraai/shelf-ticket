@@ -17,7 +17,10 @@
 (function () {
   'use strict';
   var GA_ID = 'G-ZRMDK9LR6T';            // GA4 property "Vayora Tickets (vayora.au + app)", one web stream for both sites
-  var GA_ON = /^G-[A-Z0-9]{6,}$/.test(GA_ID) && GA_ID !== 'G-XXXXXXXXXX';
+  // Production hosts only: preview builds (*.workers.dev), localhost and any
+  // other copy of the site never load GA, so they can't pollute the figures.
+  var PROD_HOST = /(^|\.)vayora\.au$/.test(location.hostname);
+  var GA_ON = PROD_HOST && /^G-[A-Z0-9]{6,}$/.test(GA_ID) && GA_ID !== 'G-XXXXXXXXXX';
   var CONSENT_COOKIE = 'vt_consent';     // 'granted' | 'denied'
   var UTM_COOKIE = 'vt_utm';
   var SAMPLE_COOKIE = 'vt_sample';

@@ -1,0 +1,3 @@
+# Preview and workers.dev copies of the app: never index them.
+https://:worker.:subdomain.workers.dev/*
+  X-Robots-Tag: noindex

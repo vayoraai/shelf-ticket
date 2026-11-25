@@ -1764,6 +1764,8 @@ async function loadAdminReports(){
         trialEndsAt: plan && plan.trialEndsAt || null,
         billingStatus: (data.billing||{}).status || '',
         everSubscribed: !!(data.billing||{}).everSubscribed,
+        isTest: isTestStore(data),
+        testKind: ((data.flags||[]).includes('test') ? 'test' : ((data.flags||[]).includes('internal') ? 'internal' : '')),
         cancelAtPeriodEnd: !!(data.billing||{}).cancelAtPeriodEnd,
         currentPeriodEnd: (data.billing||{}).currentPeriodEnd || null,
         firstImportAt: ms.firstImportAt||null, firstScanAt: ms.firstScanAt||null, firstPrintAt: ms.firstPrintAt||null,
@@ -1790,9 +1792,11 @@ function reportPlanLabel(r){
   if(r.planStatus==='active' && r.billingStatus==='past_due') l = 'Paid (payment failed)';
   else if(r.planStatus==='active' && r.cancelAtPeriodEnd) l = 'Cancelling' + (r.currentPeriodEnd ? ' (ends ' + new Date(r.currentPeriodEnd).toLocaleDateString() + ')' : '');
   if(r.planStatus!=='active' && r.planStatus!=='comped' && r.everSubscribed) l = 'Cancelled';
+  if(r.isTest) l = (r.testKind==='test' ? 'TEST store' : 'Internal store') + ' · ' + l + (r.everSubscribed ? ' (sandbox, not revenue)' : '');
   return l;
 }
 function reportConverted(r){
+  if(r.isTest) return 'n/a (' + r.testKind + ')';
   if(r.planStatus==='active' || r.everSubscribed) return 'Yes';
   if(r.planStatus==='trialing' && !(r.trialEndsAt && r.trialEndsAt < Date.now())) return 'In trial';
   if(r.planStatus==='comped' || r.planStatus==='legacy') return 'n/a';
@@ -1832,6 +1836,8 @@ function renderAdminReportsTable(rows){
     body.appendChild(tr);
   });
   // One-line funnel summary (store counts only; revenue lives in Stripe).
+  const testRows = rows.filter(r=>r.isTest);
+  rows = rows.filter(r=>!r.isTest);   // figures below are genuine customer stores only
   const n = rows.length, cnt = f => rows.filter(f).length;
   const paid = cnt(r=>r.planStatus==='active');
   const inTrial = cnt(r=>reportConverted(r)==='In trial');
@@ -1844,7 +1850,8 @@ function renderAdminReportsTable(rows){
     + (decided ? ` · trial-to-paid ${Math.round(paid*100/decided)}% of finished trials` : '')
     + ` · imported ${cnt(r=>r.firstImportAt)} · scanned ${cnt(r=>r.firstScanAt)} · print requested ${cnt(r=>r.firstPrintAt)}`
     + ` · made a sample ticket first: ${fromSample.length} (${fromSample.filter(r=>reportConverted(r)==='Yes').length} paid)`
-    + ` (tracked from 25 Nov 2026). Revenue: see Stripe.`;
+    + ` (tracked from 25 Nov 2026). Revenue: see Stripe.`
+    + (testRows.length ? ` Not counted: ${testRows.length} test/internal store${testRows.length===1?'':'s'} (${testRows.map(r=>r.code).join(', ')}).` : '');
 }
 $('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
 
@@ -1960,6 +1967,7 @@ $('btnRefreshAdminReports').addEventListener('click', loadAdminReports);
 function adminReportRowsForExport(){
   return lastAdminReportRows.map(r=>({
     Store: r.name, Code: r.code,
+    'Test / Internal': r.isTest ? r.testKind : '',
     Registered: r.registered ? new Date(r.registered).toISOString().slice(0,10) : '',
     'First Touch': reportFirstTouch(r),
     'Last Touch': reportSource(r),
@@ -2206,6 +2214,10 @@ async function recordAcquisition(code, referred){
 // their firsts go on their own staffProfiles entry. Reports uses the earliest.
 // firstPrintAt = the first time Print was pressed (the browser print dialog
 // opened). It does not confirm that paper came out of a printer.
+// Admin-set flags 'test' or 'internal' (stores.flags is admin-only in the
+// security rules) keep a store out of customer, trial, conversion and
+// revenue figures in Reports and out of GA.
+function isTestStore(d){ const f = (d && d.flags) || []; return f.includes('test') || f.includes('internal'); }
 const MILESTONE_EVENTS = { firstImportAt:'first_import', firstScanAt:'first_scan', firstPrintAt:'first_print_requested' };
 function recordMilestone(key){
   try{
@@ -2229,6 +2241,9 @@ function recordMilestone(key){
 // friendly face of it, not the lock itself.
 function applyPlanState(){
   const st = planState(currentStoreData);
+  // Test / internal stores (flags set by an admin): this device's activity is
+  // marked as internal so it's left out of Google Analytics figures.
+  try{ if(isTestStore(currentStoreData) && window.vtMarkInternal) window.vtMarkInternal(); }catch(e){}
   const isMember = !!(currentStoreData && (currentStoreData.members||[]).includes(currentUser && currentUser.uid));
   const badge = $('planBadge');
   const bill = (currentStoreData && currentStoreData.billing) || {};
