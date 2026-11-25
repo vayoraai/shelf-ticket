@@ -798,7 +798,7 @@ tbody tr.flash{animation:flashRow .9s;}
         <label style="display:block;font-size:12px;font-weight:600;color:#b3630f;margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;">⚡ Plan (admin only)</label>
         <div class="hint" id="planAdminInfo"></div>
         <div class="plan-admin">
-          <button class="btn ghost" data-plan="trial30">Give 30-day trial</button>
+          <button class="btn ghost" data-plan="trial30" title="Server-checked and recorded in the audit log">Grant 30-day trial</button>
           <button class="btn ghost" data-plan="extend14">+14 days</button>
           <button class="btn ghost" data-plan="active">Mark as paid</button>
           <button class="btn ghost" data-plan="comped">Complimentary</button>
@@ -1764,6 +1764,9 @@ async function loadAdminReports(){
         trialEndsAt: plan && plan.trialEndsAt || null,
         billingStatus: (data.billing||{}).status || '',
         everSubscribed: !!(data.billing||{}).everSubscribed,
+        billingMode: billingModeOf(data.billing),
+        hasSubscription: !!(data.billing||{}).subscriptionId,
+        inReview: (data.flags||[]).includes('trial-review'),
         isTest: isTestStore(data),
         testKind: ((data.flags||[]).includes('test') ? 'test' : ((data.flags||[]).includes('internal') ? 'internal' : '')),
         cancelAtPeriodEnd: !!(data.billing||{}).cancelAtPeriodEnd,
@@ -1786,18 +1789,27 @@ const TRACKING_START = Date.UTC(2026, 10, 24, 13, 0, 0); // 25 Nov 2026 00:00 Sy
 const PLAN_LABELS = { trialing:'Trial', active:'Paid', comped:'Complimentary', payment_required:'Subscription needed (no trial)', legacy:'Legacy (no plan)' };
 // Plan and billing fields are written by startTrial and the Stripe webhook;
 // this screen only reads them. Stripe stays the source of truth for revenue.
+// Only LIVE Stripe billing is a real customer payment. Sandbox (test-card)
+// subscriptions are shown but never counted as paid or converted.
+function reportSandbox(r){ return r.billingMode==='test' && (r.everSubscribed || r.hasSubscription); }
+function reportPaidLive(r){ return r.billingMode==='live' && (r.everSubscribed || r.planStatus==='active'); }
 function reportPlanLabel(r){
   let l = PLAN_LABELS[r.planStatus] || r.planStatus || '—';
+  if(r.planStatus==='payment_required' && r.inReview) l = 'Awaiting trial review';
   if(r.planStatus==='trialing' && r.trialEndsAt && r.trialEndsAt < Date.now()) l = 'Trial ended, not subscribed';
   if(r.planStatus==='active' && r.billingStatus==='past_due') l = 'Paid (payment failed)';
   else if(r.planStatus==='active' && r.cancelAtPeriodEnd) l = 'Cancelling' + (r.currentPeriodEnd ? ' (ends ' + new Date(r.currentPeriodEnd).toLocaleDateString() + ')' : '');
+  if(r.planStatus==='active' && !r.billingMode) l = 'Paid (manual)';
   if(r.planStatus!=='active' && r.planStatus!=='comped' && r.everSubscribed) l = 'Cancelled';
-  if(r.isTest) l = (r.testKind==='test' ? 'TEST store' : 'Internal store') + ' · ' + l + (r.everSubscribed ? ' (sandbox, not revenue)' : '');
+  if(reportSandbox(r)) l = 'Sandbox · ' + l + ' (test card, not revenue)';
+  if(r.isTest) l = (r.testKind==='test' ? 'TEST store' : 'Internal store') + ' · ' + l + (r.everSubscribed && !reportSandbox(r) ? ' (sandbox, not revenue)' : '');
   return l;
 }
 function reportConverted(r){
   if(r.isTest) return 'n/a (' + r.testKind + ')';
-  if(r.planStatus==='active' || r.everSubscribed) return 'Yes';
+  if(reportSandbox(r)) return 'n/a (sandbox)';
+  if(reportPaidLive(r)) return 'Yes';
+  if(r.planStatus==='active') return 'Yes (manual)';
   if(r.planStatus==='trialing' && !(r.trialEndsAt && r.trialEndsAt < Date.now())) return 'In trial';
   if(r.planStatus==='comped' || r.planStatus==='legacy') return 'n/a';
   return 'No';
@@ -1839,7 +1851,9 @@ function renderAdminReportsTable(rows){
   const testRows = rows.filter(r=>r.isTest);
   rows = rows.filter(r=>!r.isTest);   // figures below are genuine customer stores only
   const n = rows.length, cnt = f => rows.filter(f).length;
-  const paid = cnt(r=>r.planStatus==='active');
+  const paid = cnt(r=>r.planStatus==='active' && !reportSandbox(r));
+  const review = cnt(r=>r.inReview && r.planStatus==='payment_required');
+  const sandbox = cnt(r=>reportSandbox(r));
   const inTrial = cnt(r=>reportConverted(r)==='In trial');
   const ended = cnt(r=>reportConverted(r)==='No' && r.planStatus==='trialing');
   const cancelled = cnt(r=>reportPlanLabel(r)==='Cancelled' || /^Cancelling/.test(reportPlanLabel(r)));
@@ -1851,6 +1865,8 @@ function renderAdminReportsTable(rows){
     + ` · imported ${cnt(r=>r.firstImportAt)} · scanned ${cnt(r=>r.firstScanAt)} · print requested ${cnt(r=>r.firstPrintAt)}`
     + ` · made a sample ticket first: ${fromSample.length} (${fromSample.filter(r=>reportConverted(r)==='Yes').length} paid)`
     + ` (tracked from 25 Nov 2026). Revenue: see Stripe.`
+    + (review ? ` Awaiting trial review: ${review} (open the store → Grant trial).` : '')
+    + (sandbox ? ` Sandbox (test-card) subscriptions not counted as paid: ${sandbox}.` : '')
     + (testRows.length ? ` Not counted: ${testRows.length} test/internal store${testRows.length===1?'':'s'} (${testRows.map(r=>r.code).join(', ')}).` : '');
 }
 $('btnAdminReports').addEventListener('click', ()=>{ openModal('overlayAdminReports'); loadAdminReports(); });
@@ -1981,6 +1997,7 @@ function adminReportRowsForExport(){
     Plan: reportPlanLabel(r),
     'Trial Ends': r.trialEndsAt ? new Date(r.trialEndsAt).toISOString().slice(0,10) : '',
     Converted: reportConverted(r),
+    'Billing Mode': r.billingMode || '',
     'First Import': r.firstImportAt ? new Date(r.firstImportAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
     'First Scan': r.firstScanAt ? new Date(r.firstScanAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
     'First Print Requested': r.firstPrintAt ? new Date(r.firstPrintAt).toISOString().slice(0,10) : (r.tracked ? '' : 'not tracked'),
@@ -2218,6 +2235,9 @@ async function recordAcquisition(code, referred){
 // security rules) keep a store out of customer, trial, conversion and
 // revenue figures in Reports and out of GA.
 function isTestStore(d){ const f = (d && d.flags) || []; return f.includes('test') || f.includes('internal'); }
+// Stripe mode of a store's billing ('test' sandbox / 'live'); billing saved
+// before modes were recorded is sandbox billing. Archived billing is ignored.
+function billingModeOf(b){ if(!b) return null; if(b.mode==='test' || b.mode==='live') return b.mode; return (b.customerId || b.subscriptionId) ? 'test' : null; }
 const MILESTONE_EVENTS = { firstImportAt:'first_import', firstScanAt:'first_scan', firstPrintAt:'first_print_requested' };
 function recordMilestone(key){
   try{
@@ -2244,6 +2264,7 @@ function applyPlanState(){
   // Test / internal stores (flags set by an admin): this device's activity is
   // marked as internal so it's left out of Google Analytics figures.
   try{ if(isTestStore(currentStoreData) && window.vtMarkInternal) window.vtMarkInternal(); }catch(e){}
+  try{ maybeSendSubscriptionStarted(); }catch(e){}
   const isMember = !!(currentStoreData && (currentStoreData.members||[]).includes(currentUser && currentUser.uid));
   const badge = $('planBadge');
   const bill = (currentStoreData && currentStoreData.billing) || {};
@@ -2274,9 +2295,12 @@ function applyPlanState(){
     try{ const k='vt-ev-trialend-'+storeCode; if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); vtEvent('trial_expired_paywall_view', {}); } }catch(e){}
   }
   if(lock){
-    $('paywallTitle').textContent = st.status==='payment_required' ? 'Subscribe to start using Vayora Tickets' : 'Your free trial has ended';
-    $('paywallSub').textContent = st.status==='payment_required'
-      ? 'A free trial has already been used by this business, account, device or internet connection, so this store starts on a subscription. Everything you set up is kept.'
+    const inReview = st.status==='payment_required' && ((currentStoreData && currentStoreData.flags) || []).includes('trial-review');
+    $('paywallTitle').textContent = inReview ? "We're checking your free trial" : st.status==='payment_required' ? 'Subscribe to start using Vayora Tickets' : 'Your free trial has ended';
+    $('paywallSub').textContent = inReview
+      ? 'This sign-up looks similar to an earlier free trial (for example the same computer and internet connection), so we check it by hand — usually within one business day, and we\'ll email you. If you\'d rather not wait, you can subscribe now. Everything you set up is kept.'
+      : st.status==='payment_required'
+      ? 'This business (ABN) has already had a free trial, so this store starts on a subscription. Everything you set up is kept. If you think this is a mistake, contact us.'
       : 'Subscribe to keep scanning, importing and printing. Your catalog, print queue and saved batches are kept safe.';
     $('paywallStore').textContent = (currentStoreData && currentStoreData.name) || '';
     $('paywallCode').textContent = storeCode || '';
@@ -2301,10 +2325,21 @@ function applyPlanState(){
   if(!q) return;
   history.replaceState(null, '', location.pathname);
   setTimeout(()=>{
-    if(q==='success'){ toast('Payment received — thank you! Unlocking your store…'); vtEvent('subscription_started', {}); }
+    // subscription_started is sent once the store shows a LIVE subscription
+    // (see maybeSendSubscriptionStarted) — never for sandbox test cards.
+    if(q==='success'){ toast('Payment received — thank you! Unlocking your store…'); subscriptionEventPending = Date.now(); maybeSendSubscriptionStarted(); }
     else toast('Checkout cancelled — no payment was taken.');
   }, 800);
 })();
+let subscriptionEventPending = 0;
+function maybeSendSubscriptionStarted(){
+  if(!subscriptionEventPending || Date.now() - subscriptionEventPending > 10*60*1000) return;
+  const d = currentStoreData || {}, b = d.billing || {};
+  if(!(d.plan && d.plan.status==='active' && b.mode==='live' && b.subscriptionId) || isTestStore(d)) return;
+  subscriptionEventPending = 0;
+  try{ const k='vt-ev-sub-'+b.subscriptionId; if(localStorage.getItem(k)) return; localStorage.setItem(k,'1'); }catch(e){}
+  vtEvent('subscription_started', { plan: 'online_monthly' });
+}
 // A trial can run out while the app is open — re-check every 10 minutes.
 setInterval(()=>{ if(storeCode && currentStoreData) applyPlanState(); }, 10*60*1000);
 function openReferStore(){
@@ -2525,7 +2560,19 @@ document.querySelectorAll('#planAdminWrap [data-plan]').forEach(btn=>{
     const p = Object.assign({}, (currentStoreData && currentStoreData.plan) || {});
     const now = Date.now(), act = btn.dataset.plan;
     let plan;
-    if(act==='trial30') plan = { status:'trialing', trialStartedAt: now, trialEndsAt: now + TRIAL_DAYS*864e5 };
+    if(act==='trial30'){
+      // Grant trial runs on the server: admin-checked, marks the ABN/owner/
+      // device/connection as trialled, and writes an audit record.
+      const reason = (prompt('Grant a 30-day free trial to this store.\n\nReason (saved in the audit log):') || '').trim();
+      if(!reason) return;
+      btn.disabled = true;
+      try{
+        await httpsCallable(fns, 'grantTrial')({ storeCode, reason, days: TRIAL_DAYS });
+        toast('Trial granted — 30 days');
+      }catch(e){ toast('Could not grant the trial: '+e.message, 'err'); }
+      finally{ btn.disabled = false; }
+      return;
+    }
     else if(act==='extend14') plan = { ...p, status:'trialing', trialStartedAt: p.trialStartedAt||now, trialEndsAt: Math.max(p.trialEndsAt||0, now) + 14*864e5 };
     else if(act==='active') plan = { ...p, status:'active', paidSince: p.paidSince || now };
     else if(act==='comped') plan = { ...p, status:'comped' };
