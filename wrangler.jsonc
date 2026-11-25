@@ -1,0 +1,14 @@
+// Cloudflare Workers static-assets config.
+// Same settings `wrangler deploy` was auto-generating on every production
+// build (Worker "shelf-ticket-git", Framework: Static, Output Directory: .).
+// Committed so preview branches, which run `wrangler versions upload`, can
+// build too (that command cannot auto-generate a config).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shelf-ticket-git",
+  "compatibility_date": "2026-11-13",
+  "observability": { "enabled": true },
+  "assets": { "directory": "." },
+  "workers_dev": true,
+  "preview_urls": true
+}
