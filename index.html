@@ -1353,6 +1353,7 @@ function initFirebase(config){
       try{
         const adminSnap = await getDoc(doc(db,'admins',user.uid));
         isAdminUser = adminSnap.exists();
+        if(isAdminUser){ try{ window.vtMarkInternal && window.vtMarkInternal(); }catch(e){} }
       }catch(e){ isAdminUser = false; }
       $('gateAuth').style.display='none';
       $('gateStaff').style.display='none';

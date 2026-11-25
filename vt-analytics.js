@@ -16,12 +16,13 @@
  */
 (function () {
   'use strict';
-  var GA_ID = 'G-XXXXXXXXXX';            // <-- set your GA4 Measurement ID here (both repos)
+  var GA_ID = 'G-ZRMDK9LR6T';            // GA4 property "Vayora Tickets (vayora.au + app)", one web stream for both sites
   var GA_ON = /^G-[A-Z0-9]{6,}$/.test(GA_ID) && GA_ID !== 'G-XXXXXXXXXX';
   var CONSENT_COOKIE = 'vt_consent';     // 'granted' | 'denied'
   var UTM_COOKIE = 'vt_utm';
   var SAMPLE_COOKIE = 'vt_sample';
   var pendingTouch = null;               // this page's campaign touch, before consent
+  var INTERNAL_COOKIE = 'vt_internal';   // owner/staff devices: excluded by the GA "Internal Traffic" filter
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
   var PARAM_ALLOW = ['link_location', 'link_text', 'page_path', 'ticket_format', 'method', 'plan', 'sample_used', 'value', 'currency'];
   var host = location.hostname;
@@ -103,14 +104,19 @@
     window.gtag = function () { window.dataLayer.push(arguments); };
     gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted' });
     gtag('js', new Date());
-    gtag('config', GA_ID, {
+    var cfg = {
       allow_google_signals: false,
       allow_ad_personalization_signals: false,
       cookie_domain: onVayora ? 'vayora.au' : 'auto',
       // Strip query strings from page URLs so nothing typed into a URL reaches GA.
       page_location: location.origin + location.pathname + utmOnlySearch(),
       page_title: document.title
-    });
+    };
+    // Referrer without its query string (a link from an email or search page
+    // can carry personal details in its URL).
+    try { if (document.referrer) { var ru = new URL(document.referrer); cfg.page_referrer = ru.origin + ru.pathname; } } catch (e) {}
+    if (getCookie(INTERNAL_COOKIE) === '1') cfg.traffic_type = 'internal';
+    gtag('config', GA_ID, cfg);
     var s = document.createElement('script');
     s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
     document.head.appendChild(s);
@@ -191,6 +197,13 @@
   }, true);
 
   /* ---------- start ---------- */
+  // ?vt_internal=1 marks this browser as Vayora's own (filtered out of GA);
+  // ?vt_internal=0 clears it. Admin sign-ins in the app set it automatically.
+  try {
+    var iq = new URLSearchParams(location.search).get('vt_internal');
+    if (iq === '1') setCookie(INTERNAL_COOKIE, '1', 400);
+    if (iq === '0') delCookie(INTERNAL_COOKIE);
+  } catch (e) {}
   pendingTouch = readTouch();
   if (GA_ON) {
     var c = getCookie(CONSENT_COOKIE);
@@ -201,6 +214,7 @@
   window.vtTrack = track;
   window.vtAttribution = readAttribution;
   window.vtMarkSample = markSample;
+  window.vtMarkInternal = function () { try { if (getCookie(INTERNAL_COOKIE) !== '1') setCookie(INTERNAL_COOKIE, '1', 400); } catch (e) {} };
   window.vtConsent = function () { return getCookie(CONSENT_COOKIE); };
   window.vtOpenConsent = openConsent;
 })();
